@@ -1,0 +1,18 @@
+# Build output
+backend/target/
+frontend/dist/
+frontend/node_modules/
+
+# Tooling
+.mvn/wrapper/maven-wrapper.jar
+*.log
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
+*.iml
+
+# Local env
+.env
+.env.local
