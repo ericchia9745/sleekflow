@@ -8,11 +8,13 @@ import com.sleekflow.scheduleNote.config.AppProperties;
 import com.sleekflow.scheduleNote.domain.User;
 import com.sleekflow.scheduleNote.domain.UserSession;
 import com.sleekflow.scheduleNote.dto.AuthenticatedUserResponse;
+import com.sleekflow.scheduleNote.dto.ChangePasswordRequest;
 import com.sleekflow.scheduleNote.dto.LoginRequest;
 import com.sleekflow.scheduleNote.dto.RegisterRequest;
 import com.sleekflow.scheduleNote.dto.SessionResponse;
 import com.sleekflow.scheduleNote.exception.AuthenticationFailedException;
 import com.sleekflow.scheduleNote.exception.UnauthenticatedException;
+import com.sleekflow.scheduleNote.exception.UserNotFoundException;
 import com.sleekflow.scheduleNote.exception.UsernameTakenException;
 import com.sleekflow.scheduleNote.repository.UserRepository;
 import com.sleekflow.scheduleNote.repository.UserSessionRepository;
@@ -75,6 +77,21 @@ public class AuthService {
 			user.setPasswordHash(this.passwordHasher.hash(request.password()));
 		}
 		return openSession(user);
+	}
+
+	/**
+	 * Replaces a user's password given only their username.
+	 * <p>
+	 * Deliberately asks for nothing else -- no current password, no emailed
+	 * link. That is a real trade-off: anyone who knows a username can take over
+	 * the account. Acceptable here because there is nowhere else a reset link
+	 * could go (no email on file); revisit before this app has anything worth
+	 * protecting.
+	 */
+	public void changePassword(ChangePasswordRequest request) {
+		User user = this.users.findByUsername(request.username().trim())
+			.orElseThrow(() -> new UserNotFoundException(request.username()));
+		user.setPasswordHash(this.passwordHasher.hash(request.newPassword()));
 	}
 
 	/**

@@ -10,6 +10,7 @@ import com.sleekflow.scheduleNote.exception.InvalidTodoRequestException;
 import com.sleekflow.scheduleNote.exception.StaleTodoException;
 import com.sleekflow.scheduleNote.exception.TodoNotFoundException;
 import com.sleekflow.scheduleNote.exception.UnauthenticatedException;
+import com.sleekflow.scheduleNote.exception.UserNotFoundException;
 import com.sleekflow.scheduleNote.exception.UsernameTakenException;
 
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -85,6 +86,11 @@ class GlobalExceptionHandler {
 	@ExceptionHandler(UsernameTakenException.class)
 	ProblemDetail handleUsernameTaken(UsernameTakenException ex) {
 		return problem(HttpStatus.CONFLICT, "Username taken", ex.getMessage(), "username-taken");
+	}
+
+	@ExceptionHandler(UserNotFoundException.class)
+	ProblemDetail handleUserNotFound(UserNotFoundException ex) {
+		return problem(HttpStatus.NOT_FOUND, "User not found", ex.getMessage(), "user-not-found");
 	}
 
 	@ExceptionHandler(InvalidTodoRequestException.class)

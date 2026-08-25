@@ -1,6 +1,7 @@
 package com.sleekflow.scheduleNote.api;
 
 import com.sleekflow.scheduleNote.dto.AuthenticatedUserResponse;
+import com.sleekflow.scheduleNote.dto.ChangePasswordRequest;
 import com.sleekflow.scheduleNote.dto.LoginRequest;
 import com.sleekflow.scheduleNote.dto.RegisterRequest;
 import com.sleekflow.scheduleNote.dto.SessionResponse;
@@ -48,6 +49,18 @@ public class AuthController {
 			description = "Takes the same hex-encoded SHA-256 as registration. Returns a bearer token.")
 	public SessionResponse login(@Valid @RequestBody LoginRequest request) {
 		return this.authService.login(request);
+	}
+
+	@PostMapping("/change-password")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	@Operation(summary = "Change a password by username",
+			description = """
+					No re-authentication and no email confirmation: if the username exists,
+					its password is replaced outright. `newPassword` must be the hex-encoded
+					SHA-256 of the new password, hashed the same way as registration and
+					login.""")
+	public void changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+		this.authService.changePassword(request);
 	}
 
 	@PostMapping("/logout")
