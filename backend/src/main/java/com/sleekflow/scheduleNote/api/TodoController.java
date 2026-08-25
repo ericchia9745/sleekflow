@@ -9,6 +9,7 @@ import com.sleekflow.scheduleNote.dto.ChangeStatusRequest;
 import com.sleekflow.scheduleNote.dto.CreateTodoRequest;
 import com.sleekflow.scheduleNote.dto.StatusChangeResponse;
 import com.sleekflow.scheduleNote.dto.TodoResponse;
+import com.sleekflow.scheduleNote.dto.TodoRevisionResponse;
 import com.sleekflow.scheduleNote.dto.UpdateTodoRequest;
 import com.sleekflow.scheduleNote.domain.TodoPriority;
 import com.sleekflow.scheduleNote.domain.TodoStatus;
@@ -66,6 +67,16 @@ public class TodoController {
 			@PageableDefault(size = 25) Pageable pageable) {
 		TodoQuery query = new TodoQuery(status, priority, dueFrom, dueTo, blocked, search, includeDeleted, deletedOnly);
 		return this.service.list(query, pageable);
+	}
+
+	@GetMapping("/revision")
+	@Operation(summary = "Fingerprint of the list, for change polling",
+			description = """
+					Returns the newest update timestamp and the row count. Clients poll this
+					and refetch only when it differs from what they hold, which keeps an
+					idle tab from pulling the list on a timer.""")
+	public TodoRevisionResponse revision() {
+		return this.service.revision();
 	}
 
 	@GetMapping("/{id}")

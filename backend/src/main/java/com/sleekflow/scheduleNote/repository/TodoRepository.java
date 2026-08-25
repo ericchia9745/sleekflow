@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import com.sleekflow.scheduleNote.domain.Todo;
+import com.sleekflow.scheduleNote.dto.TodoRevisionResponse;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -37,6 +38,13 @@ public interface TodoRepository extends JpaRepository<Todo, Long>, JpaSpecificat
 	@Query(value = "SELECT DISTINCT td.depends_on_id FROM todo_dependencies td WHERE td.todo_id IN (:ids)",
 			nativeQuery = true)
 	Set<Long> findDependencyIdsOf(@Param("ids") Collection<Long> ids);
+
+	/**
+	 * One aggregate row summarising the state of the list, for change polling.
+	 * Two aggregates over an indexed column: far cheaper than shipping a page.
+	 */
+	@Query("SELECT new com.sleekflow.scheduleNote.dto.TodoRevisionResponse(MAX(t.updatedAt), COUNT(t)) FROM Todo t")
+	TodoRevisionResponse loadRevision();
 
 	/** TODOs that depend on the given one -- used to explain a blocked state. */
 	@Query("SELECT t FROM Todo t JOIN t.dependencies d WHERE d.id = :id AND t.deletedAt IS NULL")

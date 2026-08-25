@@ -6,6 +6,7 @@ import java.util.List;
 
 import com.sleekflow.scheduleNote.dto.RecurrenceResponse;
 import com.sleekflow.scheduleNote.config.AppProperties;
+import com.sleekflow.scheduleNote.security.AuthenticationFilter;
 import com.sleekflow.scheduleNote.dto.StatusChangeResponse;
 import com.sleekflow.scheduleNote.dto.TodoResponse;
 import com.sleekflow.scheduleNote.domain.RecurrenceType;
@@ -21,6 +22,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -42,7 +45,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Covers the HTTP contract: which status code each failure maps to, and that
  * failures carry enough structure for a client to act on.
  */
-@WebMvcTest(TodoController.class)
+// The authentication filter is excluded here: these tests pin the controller's
+// HTTP contract. Authentication has its own tests, in AuthenticationFilterTest.
+@WebMvcTest(controllers = TodoController.class,
+		excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = AuthenticationFilter.class))
 // WebConfig is part of the web slice and needs the bound properties; the slice
 // does not run @ConfigurationPropertiesScan on its own.
 @EnableConfigurationProperties(AppProperties.class)

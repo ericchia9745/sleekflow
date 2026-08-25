@@ -87,3 +87,10 @@ export const EMPTY_FILTERS: TodoFilters = {
   search: '',
   deletedOnly: false,
 }
+
+export interface AuthenticatedUser {
+  id: number
+  username: string
+  displayName: string
+  createdAt: string
+}

@@ -15,6 +15,7 @@ import com.sleekflow.scheduleNote.dto.CreateTodoRequest;
 import com.sleekflow.scheduleNote.dto.RecurrenceRequest;
 import com.sleekflow.scheduleNote.dto.StatusChangeResponse;
 import com.sleekflow.scheduleNote.dto.TodoResponse;
+import com.sleekflow.scheduleNote.dto.TodoRevisionResponse;
 import com.sleekflow.scheduleNote.dto.UpdateTodoRequest;
 import com.sleekflow.scheduleNote.config.AppProperties;
 import com.sleekflow.scheduleNote.domain.Recurrence;
@@ -56,6 +57,12 @@ public class TodoService {
 		Page<Todo> page = this.repository.findAll(toSpecification(query), capped(pageable));
 		Set<Long> blockedIds = blockedIdsAmong(page.getContent());
 		return page.map((todo) -> TodoResponse.of(todo, blockedIds.contains(todo.getId())));
+	}
+
+	/** The list's current fingerprint, for clients polling for changes. */
+	@Transactional(readOnly = true)
+	public TodoRevisionResponse revision() {
+		return this.repository.loadRevision();
 	}
 
 	@Transactional(readOnly = true)

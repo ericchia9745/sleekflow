@@ -1,6 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
+import { setUnauthorizedHandler } from './api/client'
 import { describeError } from './api/todos'
+import { useAuth } from './auth/AuthContext'
+import { AuthScreen } from './components/AuthScreen'
 import type { TodoPayload } from './api/todos'
 import { FilterBar } from './components/FilterBar'
 import { TodoForm } from './components/TodoForm'
@@ -13,12 +16,32 @@ import {
   useTodoList,
   useUpdateTodo,
 } from './hooks/useTodos'
+import { useRealtimeSync } from './realtime/useRealtimeSync'
 import { EMPTY_FILTERS } from './types'
 import type { SortDirection, SortKey, Todo, TodoFilters, TodoStatus } from './types'
 
 const PAGE_SIZE = 25
 
 export default function App() {
+  const { user, initialising, signOut } = useAuth()
+
+  // A 401 from any call means this session is finished; drop it so the app
+  // returns to the sign-in screen instead of failing request after request.
+  useEffect(() => {
+    setUnauthorizedHandler(() => { void signOut() })
+  }, [signOut])
+
+  if (initialising) {
+    return <div className="app"><p className="muted">Restoring your session…</p></div>
+  }
+  if (!user) {
+    return <AuthScreen />
+  }
+  return <TodoWorkspace />
+}
+
+function TodoWorkspace() {
+  const { user, signOut } = useAuth()
   const [filters, setFilters] = useState<TodoFilters>(EMPTY_FILTERS)
   const [page, setPage] = useState(0)
   const [sortKey, setSortKey] = useState<SortKey>('dueDate')
@@ -29,6 +52,7 @@ export default function App() {
   const [message, setMessage] = useState<{ tone: 'error' | 'info'; text: string } | null>(null)
   const [busyId, setBusyId] = useState<number | null>(null)
 
+  const { announceChange, lastCheckedAt } = useRealtimeSync(true)
   const list = useTodoList({ ...filters, page, size: PAGE_SIZE, sortKey, sortDirection })
   const create = useCreateTodo()
   const update = useUpdateTodo()
@@ -60,6 +84,7 @@ export default function App() {
     setMessage(null)
     try {
       await create.mutateAsync(payload)
+      announceChange()
       setCreating(false)
     } catch (error) {
       setMessage({ tone: 'error', text: describeError(error) })
@@ -71,6 +96,7 @@ export default function App() {
     setMessage(null)
     try {
       await update.mutateAsync({ ...payload, id: editing.id, version: editing.version })
+      announceChange()
       setEditing(null)
     } catch (error) {
       setMessage({ tone: 'error', text: describeError(error) })
@@ -82,6 +108,7 @@ export default function App() {
     setBusyId(todo.id)
     try {
       const result = await changeStatus.mutateAsync({ id: todo.id, status, version: todo.version })
+      announceChange()
       if (result.nextOccurrence) {
         setMessage({
           tone: 'info',
@@ -99,6 +126,7 @@ export default function App() {
     setMessage(null)
     try {
       await remove.mutateAsync(todo.id)
+      announceChange()
       setMessage({ tone: 'info', text: `Deleted “${todo.name}”. Find it under “Show deleted only” to restore it.` })
     } catch (error) {
       setMessage({ tone: 'error', text: describeError(error) })
@@ -109,6 +137,7 @@ export default function App() {
     setMessage(null)
     try {
       await restore.mutateAsync(todo.id)
+      announceChange()
     } catch (error) {
       setMessage({ tone: 'error', text: describeError(error) })
     }
@@ -118,9 +147,20 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <h1>TODOs</h1>
-        <button type="button" onClick={() => { setCreating(true); setEditing(null) }}>
-          New TODO
-        </button>
+        <div className="header-actions">
+          <span className="muted small">
+            Signed in as <strong>{user?.displayName}</strong>
+            {lastCheckedAt > 0 && (
+              <> · synced {new Date(lastCheckedAt).toLocaleTimeString()}</>
+            )}
+          </span>
+          <button type="button" onClick={() => { setCreating(true); setEditing(null) }}>
+            New TODO
+          </button>
+          <button type="button" className="secondary" onClick={() => void signOut()}>
+            Sign out
+          </button>
+        </div>
       </header>
 
       {message && (

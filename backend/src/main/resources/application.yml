@@ -55,6 +55,10 @@ app:
   pagination:
     default-page-size: ${PAGE_SIZE_DEFAULT:25}
     max-page-size: ${PAGE_SIZE_MAX:200}
+  auth:
+    # Sessions slide: the expiry moves forward while the user is active.
+    session-ttl: ${SESSION_TTL:12h}
+    max-sessions-per-user: ${MAX_SESSIONS_PER_USER:10}
 
 springdoc:
   api-docs:

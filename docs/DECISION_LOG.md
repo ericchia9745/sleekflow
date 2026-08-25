@@ -99,15 +99,45 @@ checks, cycle detection, and loading.
 `prod` profile ships none for credentials — it refuses to start and names what
 is missing. Full reference in [CONFIGURATION.md](CONFIGURATION.md).
 
-## 3. What I chose not to build
+## 3. Authentication and live updates
 
-- **Authentication and users.** The core requirements describe a single shared
-  list, and the concurrency requirement is about simultaneous access, not about
-  per-user data. Adding auth would have meant an ownership model touching every
-  query, for a feature listed as nice-to-have.
-- **Real-time updates.** Instead, the client treats cached data as immediately
-  stale and refetches on window focus, which covers the realistic case (a second
-  tab) without a WebSocket layer.
+Both were added after the core features, and both are covered in detail in
+[ARCHITECTURE.md](ARCHITECTURE.md). The decisions worth recording here:
+
+**Authentication gates access; it does not partition data.** The original
+requirement asks for "multiple users accessing the same TODO list" — one list,
+several people. So TODOs have no owner column and every signed-in user sees the
+same list. Per-user lists would be a different product.
+
+**Sessions in the database, not JWTs.** An opaque random token with a row behind
+it makes revocation an `UPDATE`. A JWT would avoid the lookup but make sign-out
+either a lie or a blocklist — which is a session table with extra steps. The
+lookup is a primary-key hit on an indexed hash.
+
+**SHA-256 was requested, and is a starting point.** It is the wrong choice for
+storing passwords: it is fast, so a stolen table falls to brute force. I built
+it as asked but designed the exit — every digest carries its algorithm as a
+prefix, and a stronger hasher re-hashes users at their next sign-in, with no
+migration. Both hashing steps (browser and server) are deliberate and solve
+different problems; neither replaces the other.
+
+**Polling a fingerprint, not a socket.** `GET /api/todos/revision` returns the
+newest `updated_at` plus a row count: 5 ms against 12,009 rows, against ~20 ms
+to return a page. Clients refetch only when it changes. A BroadcastChannel
+covers same-browser tabs instantly, so the poll only has to carry the
+cross-*user* case. SSE is the next step if five seconds is ever too slow, and
+`useRealtimeSync` is the single place that would change.
+
+**sessionStorage, with a handshake.** Storing the token per tab means closing
+the tab ends the session and nothing hits disk — but a second tab would start
+signed out, which is awkward for a multi-tab feature. New tabs ask their
+siblings for the session over the same channel. The honest cost: any same-origin
+tab can ask. That is no weaker than `localStorage`, weaker than strict per-tab
+isolation, and all three lose to XSS. `httpOnly` cookies plus CSRF handling is
+the right answer before real users.
+
+## 4. What I chose not to build
+
 - **Bulk operations.** Straightforward to add on the existing service, but they
   raise a design question — partial failure semantics — that deserves more than
   a quick answer.
@@ -121,7 +151,11 @@ is missing. Full reference in [CONFIGURATION.md](CONFIGURATION.md).
   MySQL only, and is written-but-unverified since Docker is not installed here.
   I would rather say so than imply it has been run.
 
-## 4. What I would do differently with more time
+Also left out with authentication in place: roles and permissions, password
+reset, email verification, and any rate limiting on sign-in. Throttling is the
+first thing a real deployment needs — nothing currently slows down guessing.
+
+## 5. What I would do differently with more time
 
 - **Keyset pagination** for the common sorts, so deep pages stay flat.
 - **A concurrent test that actually races two writers** against the same TODO.
@@ -136,10 +170,10 @@ is missing. Full reference in [CONFIGURATION.md](CONFIGURATION.md).
 - **Extract the frontend's filter state into the URL**, so a filtered view can be
   shared or reloaded.
 
-## 5. A bug worth recording
+## 6. Two bugs worth recording
 
-The first version of the service built its response DTO before the transaction
-flushed. Hibernate increments `@Version` at flush, so the API returned the
+**A conflict that never happened.** The first version of the service built its
+response DTO before the transaction flushed. Hibernate increments `@Version` at flush, so the API returned the
 version the client *already had* — and the client's next write then failed with
 a conflict that had never happened. Two consecutive edits always broke.
 
@@ -147,3 +181,13 @@ It was caught by the integration tests rather than by hand, which is the case
 for writing them: every manual check had passed, because a single edit works
 fine. The fix is one flush before mapping, with a comment explaining why it is
 not incidental.
+
+**A change signal that ignored changes.** The seed script stamped rows with
+MySQL's `NOW(6)` — server local time — while the application writes UTC. The
+seeded rows sat eight hours in the future, so `MAX(updated_at)` never moved when
+a real edit landed, and the revision endpoint reported "no change" while the
+list was actively being edited. The row count masked it for inserts, which is
+exactly what made it easy to miss. Found by editing a TODO and watching the
+fingerprint stay still. The seed now writes `UTC_TIMESTAMP(6)`; the wider lesson
+is that a timestamp-derived change signal quietly assumes every writer shares a
+clock, which is worth stating before adding the next writer.

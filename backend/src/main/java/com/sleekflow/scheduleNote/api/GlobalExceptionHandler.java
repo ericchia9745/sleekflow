@@ -3,11 +3,14 @@ package com.sleekflow.scheduleNote.api;
 import java.util.List;
 import java.util.Map;
 
+import com.sleekflow.scheduleNote.exception.AuthenticationFailedException;
 import com.sleekflow.scheduleNote.exception.CircularDependencyException;
 import com.sleekflow.scheduleNote.exception.DependenciesNotSatisfiedException;
 import com.sleekflow.scheduleNote.exception.InvalidTodoRequestException;
 import com.sleekflow.scheduleNote.exception.StaleTodoException;
 import com.sleekflow.scheduleNote.exception.TodoNotFoundException;
+import com.sleekflow.scheduleNote.exception.UnauthenticatedException;
+import com.sleekflow.scheduleNote.exception.UsernameTakenException;
 
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
@@ -63,6 +66,25 @@ class GlobalExceptionHandler {
 		return problem(HttpStatus.CONFLICT, "Concurrent modification",
 				"Someone else changed this TODO while your request was in flight. Refetch it and try again.",
 				"stale-version");
+	}
+
+	/**
+	 * Deliberately vague: telling a caller whether the username exists turns the
+	 * sign-in form into a way to enumerate accounts.
+	 */
+	@ExceptionHandler(AuthenticationFailedException.class)
+	ProblemDetail handleAuthenticationFailed(AuthenticationFailedException ex) {
+		return problem(HttpStatus.UNAUTHORIZED, "Sign-in failed", ex.getMessage(), "authentication-failed");
+	}
+
+	@ExceptionHandler(UnauthenticatedException.class)
+	ProblemDetail handleUnauthenticated(UnauthenticatedException ex) {
+		return problem(HttpStatus.UNAUTHORIZED, "Not signed in", ex.getMessage(), "unauthenticated");
+	}
+
+	@ExceptionHandler(UsernameTakenException.class)
+	ProblemDetail handleUsernameTaken(UsernameTakenException ex) {
+		return problem(HttpStatus.CONFLICT, "Username taken", ex.getMessage(), "username-taken");
 	}
 
 	@ExceptionHandler(InvalidTodoRequestException.class)

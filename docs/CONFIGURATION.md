@@ -47,6 +47,17 @@ cp frontend/.env.example frontend/.env.local
 | `SERVER_PORT` | `8080` | |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:5173,http://127.0.0.1:5173` | Comma-separated. Only matters when the UI is *not* behind the Vite dev proxy |
 
+### Authentication
+
+| Variable | Default | Notes |
+|---|---|---|
+| `SESSION_TTL` | `12h` | How long a session stays valid after its last use; the expiry slides forward on each authenticated request |
+| `MAX_SESSIONS_PER_USER` | `10` | Live sessions per user; the least recently used are revoked beyond this |
+
+Passwords are hashed in the browser (SHA-256) and again, with a per-user salt,
+on the server. See [ARCHITECTURE.md](ARCHITECTURE.md) for why both steps exist
+and how to move to a stronger algorithm without a migration.
+
 ### Behaviour and diagnostics
 
 | Variable | Default | Notes |

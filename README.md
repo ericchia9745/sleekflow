@@ -15,6 +15,12 @@ A TODO list application with recurring tasks, task dependencies, and filtering/s
 - **Soft delete** — deleting is reversible; deleted TODOs stay in a recycle-bin view.
 - **Concurrent-safe writes** — optimistic locking rejects a stale write with 409
   rather than silently overwriting another user's edit.
+- **Accounts and sessions** — registration and sign-in, with sessions stored in
+  the database and addressed by an opaque bearer token. Passwords are hashed in
+  the browser and again, salted, on the server.
+- **Live updates** — a tab picks up another user's changes within five seconds
+  by polling a cheap revision endpoint, and another tab's changes instantly over
+  a BroadcastChannel.
 
 - **Backend** — Java 25 · Spring Boot 4.1.1 · Spring Data JPA · Flyway · MySQL
 - **Frontend** — React 19 · TypeScript · Vite · TanStack Query
@@ -48,6 +54,10 @@ task, plus 12,000 generated rows to exercise paging and filtering at scale:
 ```
 
 Or start the backend and frontend together with `./scripts/dev.sh`.
+
+The API requires a session: create an account on first load. `crypto.subtle`
+hashes the password in the browser, which needs a secure context — `localhost`
+qualifies, any other host needs HTTPS.
 
 ## Prerequisites
 
@@ -92,8 +102,8 @@ missing variables rather than falling back to development values.
 ## Tests
 
 ```bash
-cd backend  && ./mvnw test    # 65 tests: domain units, service integration, web layer
-cd frontend && npm test       # 12 tests: error mapping and table rendering
+cd backend  && ./mvnw test    # 99 tests: domain, service, security, web layer
+cd frontend && npm test       # 24 tests: hashing, session storage, cross-tab channel, table
 ```
 
 Backend integration tests run against a real MySQL schema (`sleekflow_schedule_note_test`)
@@ -114,6 +124,8 @@ docker/      MySQL container init hook
 
 ## Documentation
 
+- **[Architecture](docs/ARCHITECTURE.md)** — how authentication, sessions, and
+  the live-update mechanism fit together, with diagrams and their trade-offs.
 - **[Decision log](docs/DECISION_LOG.md)** — how ambiguous requirements were
   interpreted, architectural trade-offs, what was deliberately left out.
 - **[Configuration reference](docs/CONFIGURATION.md)** — every setting, its

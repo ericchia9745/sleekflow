@@ -26,15 +26,15 @@ ALTER TABLE todos AUTO_INCREMENT = 1;
 -- A dependency chain: shop -> prep -> bake. Only the first is free to start.
 INSERT INTO todos (name, description, due_date, status, priority, recurrence_type, created_at, updated_at, version)
 VALUES
-  ('Buy flour and yeast', 'Wholemeal, plus a fresh sachet of yeast', CURDATE() + INTERVAL 1 DAY, 'NOT_STARTED', 'HIGH', 'NONE', NOW(6), NOW(6), 0),
-  ('Prove the dough',     'Two hours somewhere warm',                CURDATE() + INTERVAL 2 DAY, 'NOT_STARTED', 'MEDIUM', 'NONE', NOW(6), NOW(6), 0),
-  ('Bake the bread',      'Fan oven, 220C, 35 minutes',              CURDATE() + INTERVAL 2 DAY, 'NOT_STARTED', 'MEDIUM', 'NONE', NOW(6), NOW(6), 0),
-  ('Water the plants',    'Repeats weekly',                          CURDATE(),                  'NOT_STARTED', 'LOW', 'WEEKLY', NOW(6), NOW(6), 0),
-  ('Pay rent',            'Repeats monthly',                         CURDATE() + INTERVAL 5 DAY, 'NOT_STARTED', 'HIGH', 'MONTHLY', NOW(6), NOW(6), 0),
-  ('Deep clean kitchen',  'Every 10 days',                           CURDATE() + INTERVAL 3 DAY, 'NOT_STARTED', 'LOW', 'CUSTOM', NOW(6), NOW(6), 0),
-  ('File tax return',     'Already overdue, to show the overdue styling', CURDATE() - INTERVAL 7 DAY, 'IN_PROGRESS', 'HIGH', 'NONE', NOW(6), NOW(6), 0),
-  ('Cancel old gym plan', 'Finished earlier this week',              CURDATE() - INTERVAL 2 DAY, 'COMPLETED', 'MEDIUM', 'NONE', NOW(6), NOW(6), 0),
-  ('Old project notes',   'Archived rather than deleted',            NULL,                       'ARCHIVED', 'LOW', 'NONE', NOW(6), NOW(6), 0);
+  ('Buy flour and yeast', 'Wholemeal, plus a fresh sachet of yeast', UTC_DATE() + INTERVAL 1 DAY, 'NOT_STARTED', 'HIGH', 'NONE', UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), 0),
+  ('Prove the dough',     'Two hours somewhere warm',                UTC_DATE() + INTERVAL 2 DAY, 'NOT_STARTED', 'MEDIUM', 'NONE', UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), 0),
+  ('Bake the bread',      'Fan oven, 220C, 35 minutes',              UTC_DATE() + INTERVAL 2 DAY, 'NOT_STARTED', 'MEDIUM', 'NONE', UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), 0),
+  ('Water the plants',    'Repeats weekly',                          UTC_DATE(),                  'NOT_STARTED', 'LOW', 'WEEKLY', UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), 0),
+  ('Pay rent',            'Repeats monthly',                         UTC_DATE() + INTERVAL 5 DAY, 'NOT_STARTED', 'HIGH', 'MONTHLY', UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), 0),
+  ('Deep clean kitchen',  'Every 10 days',                           UTC_DATE() + INTERVAL 3 DAY, 'NOT_STARTED', 'LOW', 'CUSTOM', UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), 0),
+  ('File tax return',     'Already overdue, to show the overdue styling', UTC_DATE() - INTERVAL 7 DAY, 'IN_PROGRESS', 'HIGH', 'NONE', UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), 0),
+  ('Cancel old gym plan', 'Finished earlier this week',              UTC_DATE() - INTERVAL 2 DAY, 'COMPLETED', 'MEDIUM', 'NONE', UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), 0),
+  ('Old project notes',   'Archived rather than deleted',            NULL,                       'ARCHIVED', 'LOW', 'NONE', UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), 0);
 
 UPDATE todos SET recurrence_interval = 1  WHERE recurrence_type IN ('WEEKLY','MONTHLY');
 UPDATE todos SET recurrence_interval = 10 WHERE recurrence_type = 'CUSTOM';
@@ -46,10 +46,10 @@ INSERT INTO todos (name, description, due_date, status, priority, recurrence_typ
 WITH RECURSIVE seq(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM seq WHERE n < ${BULK})
 SELECT CONCAT('Seeded task ', n),
        CONCAT('Generated row ', n),
-       CURDATE() + INTERVAL (n % 200) DAY,
+       UTC_DATE() + INTERVAL (n % 200) DAY,
        ELT(1 + (n % 4), 'NOT_STARTED', 'IN_PROGRESS', 'COMPLETED', 'ARCHIVED'),
        ELT(1 + (n % 3), 'LOW', 'MEDIUM', 'HIGH'),
-       'NONE', NOW(6), NOW(6), 0
+       'NONE', UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), 0
 FROM seq
 WHERE ${BULK} > 0;
 
