@@ -8,7 +8,8 @@ public class DependenciesNotSatisfiedException extends RuntimeException {
 	private final transient List<String> outstanding;
 
 	public DependenciesNotSatisfiedException(Long id, List<String> outstanding) {
-		super("TODO %d is blocked by %d unfinished dependency/dependencies".formatted(id, outstanding.size()));
+		super("TODO %d is blocked by %d unfinished %s".formatted(id, outstanding.size(),
+				(outstanding.size() == 1) ? "dependency" : "dependencies"));
 		this.outstanding = List.copyOf(outstanding);
 	}
 

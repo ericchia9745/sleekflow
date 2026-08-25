@@ -1,0 +1,752 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "SleekFlow TODO API",
+        "description": "Manage TODOs with recurrence schedules and task dependencies.",
+        "license": {
+            "name": "MIT"
+        },
+        "version": "v1"
+    },
+    "servers": [
+        {
+            "url": "http://localhost:8080",
+            "description": "Generated server url"
+        }
+    ],
+    "tags": [
+        {
+            "name": "TODOs",
+            "description": "Create, organise, and track TODO items"
+        }
+    ],
+    "paths": {
+        "/api/todos/{id}": {
+            "get": {
+                "tags": [
+                    "TODOs"
+                ],
+                "summary": "Fetch a single TODO, including soft-deleted ones",
+                "operationId": "get",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TodoResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "TODOs"
+                ],
+                "summary": "Update a TODO",
+                "description": "Requires the version last seen by the client; a mismatch returns 409.",
+                "operationId": "update",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateTodoRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TodoResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "TODOs"
+                ],
+                "summary": "Soft-delete a TODO",
+                "description": "The TODO is hidden from the default list but retained and can be restored.",
+                "operationId": "delete",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/api/todos": {
+            "get": {
+                "tags": [
+                    "TODOs"
+                ],
+                "summary": "List TODOs",
+                "description": "Filter by status, priority, due-date range, dependency state, and name.\nSort with `sort=<key>,<asc|desc>` using dueDate, priority, status, name,\ncreatedAt, or updatedAt -- priority and status sort in their natural\norder rather than alphabetically. Results are always paged.",
+                "operationId": "list",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "enum": [
+                                    "NOT_STARTED",
+                                    "IN_PROGRESS",
+                                    "COMPLETED",
+                                    "ARCHIVED"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "name": "priority",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "enum": [
+                                    "LOW",
+                                    "MEDIUM",
+                                    "HIGH"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "name": "dueFrom",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "dueTo",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "blocked",
+                        "in": "query",
+                        "description": "true for TODOs waiting on a dependency, false for ones clear to start",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "includeDeleted",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "default": false
+                        }
+                    },
+                    {
+                        "name": "deletedOnly",
+                        "in": "query",
+                        "description": "Show only soft-deleted TODOs",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "default": false
+                        }
+                    },
+                    {
+                        "name": "pageable",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/Pageable"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PagedModelTodoResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "TODOs"
+                ],
+                "summary": "Create a TODO",
+                "operationId": "create",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateTodoRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TodoResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/todos/{id}/restore": {
+            "post": {
+                "tags": [
+                    "TODOs"
+                ],
+                "summary": "Restore a soft-deleted TODO",
+                "operationId": "restore",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TodoResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/todos/{id}/dependencies": {
+            "post": {
+                "tags": [
+                    "TODOs"
+                ],
+                "summary": "Make this TODO depend on another",
+                "description": "Rejected with 409 if the edge would create a dependency cycle.",
+                "operationId": "addDependency",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AddDependencyRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TodoResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/todos/{id}/status": {
+            "patch": {
+                "tags": [
+                    "TODOs"
+                ],
+                "summary": "Change a TODO's status",
+                "description": "Moving to IN_PROGRESS fails with 409 while any dependency is unfinished.\nCompleting a recurring TODO also schedules the next occurrence, which is\nreturned alongside the updated TODO.",
+                "operationId": "changeStatus",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChangeStatusRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StatusChangeResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/todos/{id}/dependencies/{dependsOnId}": {
+            "delete": {
+                "tags": [
+                    "TODOs"
+                ],
+                "summary": "Remove a dependency edge",
+                "operationId": "removeDependency",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    },
+                    {
+                        "name": "dependsOnId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TodoResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "RecurrenceRequest": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "NONE",
+                            "DAILY",
+                            "WEEKLY",
+                            "MONTHLY",
+                            "CUSTOM"
+                        ]
+                    },
+                    "interval": {
+                        "type": "integer",
+                        "format": "int32",
+                        "maximum": 365,
+                        "minimum": 0
+                    }
+                },
+                "required": [
+                    "type"
+                ]
+            },
+            "UpdateTodoRequest": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 200,
+                        "minLength": 0
+                    },
+                    "description": {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "minLength": 0
+                    },
+                    "dueDate": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "priority": {
+                        "type": "string",
+                        "enum": [
+                            "LOW",
+                            "MEDIUM",
+                            "HIGH"
+                        ]
+                    },
+                    "recurrence": {
+                        "$ref": "#/components/schemas/RecurrenceRequest"
+                    },
+                    "version": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "required": [
+                    "name",
+                    "priority",
+                    "version"
+                ]
+            },
+            "RecurrenceResponse": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "NONE",
+                            "DAILY",
+                            "WEEKLY",
+                            "MONTHLY",
+                            "CUSTOM"
+                        ]
+                    },
+                    "interval": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                }
+            },
+            "TodoResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "dueDate": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "NOT_STARTED",
+                            "IN_PROGRESS",
+                            "COMPLETED",
+                            "ARCHIVED"
+                        ]
+                    },
+                    "priority": {
+                        "type": "string",
+                        "enum": [
+                            "LOW",
+                            "MEDIUM",
+                            "HIGH"
+                        ]
+                    },
+                    "recurrence": {
+                        "$ref": "#/components/schemas/RecurrenceResponse"
+                    },
+                    "recurrenceSourceId": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "dependencies": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/TodoSummaryResponse"
+                        }
+                    },
+                    "blocked": {
+                        "type": "boolean"
+                    },
+                    "completedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "deletedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "version": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                }
+            },
+            "TodoSummaryResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "NOT_STARTED",
+                            "IN_PROGRESS",
+                            "COMPLETED",
+                            "ARCHIVED"
+                        ]
+                    },
+                    "deleted": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "CreateTodoRequest": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 200,
+                        "minLength": 0
+                    },
+                    "description": {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "minLength": 0
+                    },
+                    "dueDate": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "priority": {
+                        "type": "string",
+                        "enum": [
+                            "LOW",
+                            "MEDIUM",
+                            "HIGH"
+                        ]
+                    },
+                    "recurrence": {
+                        "$ref": "#/components/schemas/RecurrenceRequest"
+                    },
+                    "dependencyIds": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                },
+                "required": [
+                    "name"
+                ]
+            },
+            "AddDependencyRequest": {
+                "type": "object",
+                "properties": {
+                    "dependsOnId": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "required": [
+                    "dependsOnId"
+                ]
+            },
+            "ChangeStatusRequest": {
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "NOT_STARTED",
+                            "IN_PROGRESS",
+                            "COMPLETED",
+                            "ARCHIVED"
+                        ]
+                    },
+                    "version": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "required": [
+                    "status",
+                    "version"
+                ]
+            },
+            "StatusChangeResponse": {
+                "type": "object",
+                "properties": {
+                    "todo": {
+                        "$ref": "#/components/schemas/TodoResponse"
+                    },
+                    "nextOccurrence": {
+                        "$ref": "#/components/schemas/TodoResponse"
+                    }
+                }
+            },
+            "Pageable": {
+                "type": "object",
+                "properties": {
+                    "page": {
+                        "type": "integer",
+                        "format": "int32",
+                        "minimum": 0
+                    },
+                    "size": {
+                        "type": "integer",
+                        "format": "int32",
+                        "minimum": 1
+                    },
+                    "sort": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "PageMetadata": {
+                "type": "object",
+                "properties": {
+                    "size": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "number": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "totalElements": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "totalPages": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                }
+            },
+            "PagedModelTodoResponse": {
+                "type": "object",
+                "properties": {
+                    "content": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/TodoResponse"
+                        }
+                    },
+                    "page": {
+                        "$ref": "#/components/schemas/PageMetadata"
+                    }
+                }
+            }
+        }
+    }
+}

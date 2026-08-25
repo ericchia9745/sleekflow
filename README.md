@@ -2,6 +2,20 @@
 
 A TODO list application with recurring tasks, task dependencies, and filtering/sorting.
 
+## Features
+
+- **CRUD** with validation and RFC 9457 problem responses.
+- **Recurring TODOs** — daily, weekly, monthly, or every N days. Completing one
+  schedules the next occurrence automatically and links it to the series.
+- **Dependencies** — a TODO can depend on others and cannot move to *In progress*
+  until they are all completed. Cycles are rejected when the edge is added.
+- **Filtering** by status, priority, due-date range, blocked/unblocked, and name;
+  **sorting** by due date, priority, status, or name — priority and status in
+  their natural order, not alphabetically.
+- **Soft delete** — deleting is reversible; deleted TODOs stay in a recycle-bin view.
+- **Concurrent-safe writes** — optimistic locking rejects a stale write with 409
+  rather than silently overwriting another user's edit.
+
 - **Backend** — Java 25 · Spring Boot 4.1.1 · Spring Data JPA · Flyway · MySQL
 - **Frontend** — React 19 · TypeScript · Vite · TanStack Query
 - **API docs** — Swagger UI at http://localhost:8080/swagger-ui.html
@@ -71,12 +85,15 @@ missing variables rather than falling back to development values.
 ## Tests
 
 ```bash
-cd backend  && ./mvnw test    # unit + integration, against sleekflow_todo_test
-cd frontend && npm test
+cd backend  && ./mvnw test    # 65 tests: domain units, service integration, web layer
+cd frontend && npm test       # 12 tests: error mapping and table rendering
 ```
 
-Integration tests run against their own schema, so a test run never touches
-development data.
+Backend integration tests run against a real MySQL schema (`sleekflow_todo_test`)
+rather than an in-memory substitute, because several rules — the blocked filter,
+the rank-based sorts, the soft-delete predicate — are enforced in SQL and would
+pass against a mock while failing in production. They use their own schema, so a
+test run never touches development data.
 
 ## Repository layout
 
@@ -90,7 +107,9 @@ docker/      MySQL container init hook
 
 ## Documentation
 
+- **[Decision log](docs/DECISION_LOG.md)** — how ambiguous requirements were
+  interpreted, architectural trade-offs, what was deliberately left out.
 - **[Configuration reference](docs/CONFIGURATION.md)** — every setting, its
   default, and recipes for common changes.
-- [Decision log](docs/DECISION_LOG.md) — requirement interpretations,
-  trade-offs, and scope choices.
+- **[API reference](docs/openapi.json)** — exported OpenAPI 3 document. The same
+  spec is served live at `/v3/api-docs`, with Swagger UI at `/swagger-ui.html`.
