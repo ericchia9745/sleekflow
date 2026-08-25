@@ -1,4 +1,4 @@
-package com.sleekflow.scheduleNote.exception;
+package com.sleekflow.scheduleNote.domain.exception;
 
 public class UsernameTakenException extends RuntimeException {
 

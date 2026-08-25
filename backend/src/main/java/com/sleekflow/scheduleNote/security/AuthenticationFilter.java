@@ -3,8 +3,8 @@ package com.sleekflow.scheduleNote.security;
 import java.io.IOException;
 import java.util.List;
 
-import com.sleekflow.scheduleNote.domain.UserSession;
-import com.sleekflow.scheduleNote.exception.UnauthenticatedException;
+import com.sleekflow.scheduleNote.entity.UserSession;
+import com.sleekflow.scheduleNote.domain.exception.UnauthenticatedException;
 import com.sleekflow.scheduleNote.service.AuthService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

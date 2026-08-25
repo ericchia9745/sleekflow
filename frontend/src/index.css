@@ -207,3 +207,22 @@ p.error { margin: 0 0 0.75rem; }
 .dependency-outstanding { color: var(--warn); }
 .dependency-done { color: var(--muted); text-decoration: line-through; }
 .dependency-deleted { color: var(--muted); font-style: italic; }
+
+/* Whose TODO it is on the shared list. Your own rows say "you" rather than
+   repeating your name down the whole column. */
+.owner { font-size: 0.8rem; white-space: nowrap; }
+.owner-me { color: var(--muted); font-style: italic; }
+
+/* Appears only while something is selected, directly above the table it acts on. */
+.bulk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.6rem 0.9rem;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+}
+.bulk-bar .inline { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; }

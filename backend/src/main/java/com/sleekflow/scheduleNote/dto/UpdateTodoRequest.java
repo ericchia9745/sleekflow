@@ -3,7 +3,7 @@ package com.sleekflow.scheduleNote.dto;
 import java.time.LocalDate;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.sleekflow.scheduleNote.domain.TodoPriority;
+import com.sleekflow.scheduleNote.domain.enums.TodoPriority;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;

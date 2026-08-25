@@ -1,4 +1,4 @@
-package com.sleekflow.scheduleNote.exception;
+package com.sleekflow.scheduleNote.domain.exception;
 
 /** Raised when an edge would make a TODO depend on itself, directly or indirectly. */
 public class CircularDependencyException extends RuntimeException {

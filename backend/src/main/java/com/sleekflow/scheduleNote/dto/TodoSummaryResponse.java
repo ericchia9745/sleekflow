@@ -1,7 +1,7 @@
 package com.sleekflow.scheduleNote.dto;
 
-import com.sleekflow.scheduleNote.domain.Todo;
-import com.sleekflow.scheduleNote.domain.TodoStatus;
+import com.sleekflow.scheduleNote.entity.Todo;
+import com.sleekflow.scheduleNote.domain.enums.TodoStatus;
 
 /** Just enough of a TODO to render it as a dependency chip. */
 public record TodoSummaryResponse(Long id, String name, TodoStatus status, boolean deleted) {

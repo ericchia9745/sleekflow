@@ -5,14 +5,17 @@ import java.time.LocalDate;
 import java.util.List;
 
 import com.sleekflow.scheduleNote.dto.AddDependencyRequest;
+import com.sleekflow.scheduleNote.dto.BulkIdsRequest;
+import com.sleekflow.scheduleNote.dto.BulkResultResponse;
+import com.sleekflow.scheduleNote.dto.BulkStatusRequest;
 import com.sleekflow.scheduleNote.dto.ChangeStatusRequest;
 import com.sleekflow.scheduleNote.dto.CreateTodoRequest;
 import com.sleekflow.scheduleNote.dto.StatusChangeResponse;
 import com.sleekflow.scheduleNote.dto.TodoResponse;
 import com.sleekflow.scheduleNote.dto.TodoRevisionResponse;
 import com.sleekflow.scheduleNote.dto.UpdateTodoRequest;
-import com.sleekflow.scheduleNote.domain.TodoPriority;
-import com.sleekflow.scheduleNote.domain.TodoStatus;
+import com.sleekflow.scheduleNote.domain.enums.TodoPriority;
+import com.sleekflow.scheduleNote.domain.enums.TodoStatus;
 import com.sleekflow.scheduleNote.service.TodoQuery;
 import com.sleekflow.scheduleNote.service.TodoService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -50,7 +53,9 @@ public class TodoController {
 	@GetMapping
 	@Operation(summary = "List TODOs",
 			description = """
-					Filter by status, priority, due-date range, dependency state, and name.
+					The list is shared: every signed-in user sees every TODO, and each one
+					carries the owner who created it. Filter by status, priority, due-date
+					range, dependency state, name, and owner.
 					Sort with `sort=<key>,<asc|desc>` using dueDate, priority, status, name,
 					createdAt, or updatedAt -- priority and status sort in their natural
 					order rather than alphabetically. Results are always paged.""")
@@ -58,6 +63,8 @@ public class TodoController {
 			@RequestParam(required = false) List<TodoPriority> priority,
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dueFrom,
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dueTo,
+			@Parameter(description = "Restrict to the TODOs created by one user, by user id")
+			@RequestParam(required = false) Long owner,
 			@Parameter(description = "true for TODOs waiting on a dependency, false for ones clear to start")
 			@RequestParam(required = false) Boolean blocked,
 			@RequestParam(required = false) String search,
@@ -65,12 +72,13 @@ public class TodoController {
 			@Parameter(description = "Show only soft-deleted TODOs")
 			@RequestParam(defaultValue = "false") boolean deletedOnly,
 			@PageableDefault(size = 25) Pageable pageable) {
-		TodoQuery query = new TodoQuery(status, priority, dueFrom, dueTo, blocked, search, includeDeleted, deletedOnly);
+		TodoQuery query = new TodoQuery(status, priority, dueFrom, dueTo, owner, blocked, search, includeDeleted,
+				deletedOnly);
 		return this.service.list(query, pageable);
 	}
 
 	@GetMapping("/revision")
-	@Operation(summary = "Fingerprint of the list, for change polling",
+	@Operation(summary = "Fingerprint of the shared list, for change polling",
 			description = """
 					Returns the newest update timestamp and the row count. Clients poll this
 					and refetch only when it differs from what they hold, which keeps an
@@ -111,16 +119,47 @@ public class TodoController {
 
 	@DeleteMapping("/{id}")
 	@Operation(summary = "Soft-delete a TODO",
-			description = "The TODO is hidden from the default list but retained and can be restored.")
+			description = """
+					The TODO is hidden from the default list but retained and can be restored.
+					Reserved to the TODO's owner: deleting someone else's returns 403.""")
 	public ResponseEntity<Void> delete(@PathVariable Long id) {
 		this.service.delete(id);
 		return ResponseEntity.noContent().build();
 	}
 
 	@PostMapping("/{id}/restore")
-	@Operation(summary = "Restore a soft-deleted TODO")
+	@Operation(summary = "Restore a soft-deleted TODO",
+			description = "Reserved to the TODO's owner, like deleting.")
 	public TodoResponse restore(@PathVariable Long id) {
 		return this.service.restore(id);
+	}
+
+	@PostMapping("/bulk/status")
+	@Operation(summary = "Change the status of many TODOs at once",
+			description = """
+					Best-effort rather than all-or-nothing: every item carries the version
+					the client last saw, and an item that is blocked or has been edited by
+					someone else is reported in `failed` while the rest still apply. The
+					dependency gate is evaluated once for the whole batch, so the outcome
+					does not depend on the order items appear in.
+					Recurring TODOs completed here schedule their next occurrences, which
+					are returned in `createdOccurrences`. Capped at PAGE_SIZE_MAX items.""")
+	public BulkResultResponse changeStatusInBulk(@Valid @RequestBody BulkStatusRequest request) {
+		return this.service.changeStatusInBulk(request);
+	}
+
+	@PostMapping("/bulk/delete")
+	@Operation(summary = "Soft-delete many TODOs at once",
+			description = "TODOs the caller does not own are reported in `failed` and left alone.")
+	public BulkResultResponse deleteInBulk(@Valid @RequestBody BulkIdsRequest request) {
+		return this.service.deleteInBulk(request);
+	}
+
+	@PostMapping("/bulk/restore")
+	@Operation(summary = "Restore many soft-deleted TODOs at once",
+			description = "TODOs the caller does not own are reported in `failed` and left alone.")
+	public BulkResultResponse restoreInBulk(@Valid @RequestBody BulkIdsRequest request) {
+		return this.service.restoreInBulk(request);
 	}
 
 	@PostMapping("/{id}/dependencies")

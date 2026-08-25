@@ -39,6 +39,12 @@ cp frontend/.env.example frontend/.env.local
 | `DB_POOL_MAX_SIZE` | `20` | HikariCP maximum pool size |
 | `DB_POOL_MIN_IDLE` | `5` | |
 | `DB_POOL_CONNECTION_TIMEOUT_MS` | `30000` | |
+| `DB_ROOT_PASSWORD` | `root` | Used only by `docker-compose.yml`, for the container's root account |
+
+**Migrations run at startup.** `V4` is index-only and safe to apply to an
+existing database. `V3`, which introduced the owner column, is not: where the
+`users` table is empty it discards TODOs it cannot assign an owner to. That is
+fine for development and demo data and would not be for anything else.
 
 ### HTTP and CORS
 
@@ -58,6 +64,12 @@ Passwords are hashed in the browser (SHA-256) and again, with a per-user salt,
 on the server. See [ARCHITECTURE.md](ARCHITECTURE.md) for why both steps exist
 and how to move to a stronger algorithm without a migration.
 
+**There is no setting that disables `POST /api/auth/change-password`, and it
+verifies nothing beyond the username.** Anyone who knows a username can replace
+that account's password. It is an open endpoint by necessity — see the
+architecture notes — and it is the first thing to replace before this is exposed
+to anyone. Sign-in is likewise unthrottled.
+
 ### Behaviour and diagnostics
 
 | Variable | Default | Notes |
@@ -67,7 +79,7 @@ and how to move to a stronger algorithm without a migration.
 | `JPA_DDL_AUTO` | `validate` | Schema is owned by Flyway; `validate` catches drift |
 | `JPA_SHOW_SQL` | `false` | |
 | `PAGE_SIZE_DEFAULT` | `25` | |
-| `PAGE_SIZE_MAX` | `200` | Caps page size so a large list cannot be pulled in one request |
+| `PAGE_SIZE_MAX` | `200` | Caps page size so a large list cannot be pulled in one request. Also caps how many TODOs one bulk request may carry, so a client can only act on what it could have seen |
 | `API_DOCS_ENABLED` | `true` (`false` under `prod`) | `/v3/api-docs` |
 | `SWAGGER_UI_ENABLED` | `true` (`false` under `prod`) | `/swagger-ui.html` |
 | `ACTUATOR_ENDPOINTS` | `health,info` | Comma-separated exposure list |
@@ -126,9 +138,34 @@ DB_HOST=… DB_NAME=… DB_USER=… DB_PASSWORD=… \
 java -jar backend/target/schedule-note-0.0.1-SNAPSHOT.jar
 ```
 
+**Load demo data, with accounts to sign in as**
+
+```bash
+./scripts/seed.sh          # ./scripts/seed.sh 0 for just the demo set
+```
+
+The script creates two accounts and owns the demo data with them:
+
+| Username | Password | Owns |
+|---|---|---|
+| `demo` | `demo12345` | The dependency chain, the recurring chores, the overdue and archived examples, and any generated bulk rows |
+| `demo2` | `demo12345` | Two TODOs, so the Owner column and owner-only deletion have something to show |
+
+The list is shared, so either account sees everything; what differs is which
+rows each may delete.
+
 **Different toolchain locations** — `scripts/env.sh` only prepends directories
 that exist, so it is a no-op on a machine where `node` and `mysql` are already
-on `PATH`. Override with `TOOLS_HOME`, `NODE_HOME`, or `MYSQL_HOME`.
+on `PATH`.
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `TOOLS_HOME` | `~/.local/opt` | Root the others hang off |
+| `NODE_HOME` / `MYSQL_HOME` / `GH_HOME` | `$TOOLS_HOME/{node,mysql,gh}` | Added to `PATH` if present |
+| `JAVA_HOME` | `/usr/libexec/java_home` | |
+| `MYSQL_CONF` | `~/.local/etc/my.cnf` | Server config used by `db.sh start` |
+| `MYSQL_VAR` / `MYSQL_SOCKET` | `~/.local/var/mysql`, `$MYSQL_VAR/mysql.sock` | Data directory, socket, error log |
+| `ENV_FILE` | `<repo>/.env` | Which dotenv the scripts read |
 
 ## Local toolchain paths
 

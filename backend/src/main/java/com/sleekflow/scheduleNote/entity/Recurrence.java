@@ -1,4 +1,4 @@
-package com.sleekflow.scheduleNote.domain;
+package com.sleekflow.scheduleNote.entity;
 
 import java.time.LocalDate;
 
@@ -6,6 +6,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+
+import com.sleekflow.scheduleNote.domain.enums.RecurrenceType;
 
 /**
  * How often a TODO repeats. Immutable: changing a schedule replaces the value

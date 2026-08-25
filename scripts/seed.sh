@@ -14,23 +14,32 @@ if [ ! -x "$MYSQL_BIN" ]; then
   MYSQL_BIN="$(command -v mysql)" || { echo "mysql client not found" >&2; exit 1; }
 fi
 
-# Every TODO now belongs to a user, so seeding needs at least one account to
-# own the demo set. This reproduces Sha256PasswordHasher's own format
-# (sha256$<salt>$<digest>, digest = sha256(salt + "$" + password)) so the
-# account can actually be logged into afterwards; the salt is fixed rather
-# than random purely so re-running this script is idempotent.
+# Every TODO records the user who created it, so seeding needs at least one
+# account to own the demo set.
+#
+# Reproducing a stored hash takes both hashing steps, in order, or the account
+# cannot be signed into:
+#   1. the browser sends sha256(plaintext), hex -- never the plaintext itself;
+#   2. the server stores sha256(salt + "$" + <that digest>), as
+#      sha256$<salt>$<digest>, per Sha256PasswordHasher.
+# Salting the plaintext directly here would produce a hash that no password can
+# ever match, because the server never sees a plaintext to compare.
+# The salts are fixed rather than random purely so re-running this is idempotent.
 DEMO_USERNAME="demo"
 DEMO_PASSWORD="demo12345"
 DEMO_SALT="seed0000demo0000"
-DEMO_DIGEST=$(printf '%s$%s' "$DEMO_SALT" "$DEMO_PASSWORD" | openssl dgst -sha256 -r | awk '{print $1}')
+DEMO_CLIENT_DIGEST=$(printf '%s' "$DEMO_PASSWORD" | openssl dgst -sha256 -r | awk '{print $1}')
+DEMO_DIGEST=$(printf '%s$%s' "$DEMO_SALT" "$DEMO_CLIENT_DIGEST" | openssl dgst -sha256 -r | awk '{print $1}')
 DEMO_HASH="sha256\$${DEMO_SALT}\$${DEMO_DIGEST}"
 
-# A second account with a couple of todos of its own, so the per-user
-# isolation is visible in the seeded data rather than just in tests.
+# A second account with a couple of todos of its own. The list is shared, so
+# both accounts see all of it -- what the second account demonstrates is the
+# owner column, and the fact that you cannot delete what you did not create.
 OTHER_USERNAME="demo2"
 OTHER_PASSWORD="demo12345"
 OTHER_SALT="seed0001demo0001"
-OTHER_DIGEST=$(printf '%s$%s' "$OTHER_SALT" "$OTHER_PASSWORD" | openssl dgst -sha256 -r | awk '{print $1}')
+OTHER_CLIENT_DIGEST=$(printf '%s' "$OTHER_PASSWORD" | openssl dgst -sha256 -r | awk '{print $1}')
+OTHER_DIGEST=$(printf '%s$%s' "$OTHER_SALT" "$OTHER_CLIENT_DIGEST" | openssl dgst -sha256 -r | awk '{print $1}')
 OTHER_HASH="sha256\$${OTHER_SALT}\$${OTHER_DIGEST}"
 
 echo "Seeding ${DB_NAME} on ${DB_HOST}:${DB_PORT} (${BULK} generated rows)…"
@@ -63,7 +72,7 @@ VALUES
   (@demo_user_id, 'File tax return',     'Already overdue, to show the overdue styling', UTC_DATE() - INTERVAL 7 DAY, 'IN_PROGRESS', 'HIGH', 'NONE', UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), 0),
   (@demo_user_id, 'Cancel old gym plan', 'Finished earlier this week',              UTC_DATE() - INTERVAL 2 DAY, 'COMPLETED', 'MEDIUM', 'NONE', UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), 0),
   (@demo_user_id, 'Old project notes',   'Archived rather than deleted',            NULL,                       'ARCHIVED', 'LOW', 'NONE', UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), 0),
-  (@other_user_id, 'Renew passport',     'Belongs to demo2 -- proves todos are not shared across accounts', UTC_DATE() + INTERVAL 30 DAY, 'NOT_STARTED', 'MEDIUM', 'NONE', UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), 0),
+  (@other_user_id, 'Renew passport',     'Owned by demo2 -- visible to demo, but only demo2 can delete it', UTC_DATE() + INTERVAL 30 DAY, 'NOT_STARTED', 'MEDIUM', 'NONE', UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), 0),
   (@other_user_id, 'Book dentist',       'Also demo2''s',                           UTC_DATE() + INTERVAL 14 DAY, 'NOT_STARTED', 'LOW', 'NONE', UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), 0);
 
 UPDATE todos SET recurrence_interval = 1  WHERE recurrence_type IN ('WEEKLY','MONTHLY');

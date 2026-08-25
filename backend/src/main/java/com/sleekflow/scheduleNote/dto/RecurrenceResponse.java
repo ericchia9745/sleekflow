@@ -1,7 +1,7 @@
 package com.sleekflow.scheduleNote.dto;
 
-import com.sleekflow.scheduleNote.domain.Recurrence;
-import com.sleekflow.scheduleNote.domain.RecurrenceType;
+import com.sleekflow.scheduleNote.entity.Recurrence;
+import com.sleekflow.scheduleNote.domain.enums.RecurrenceType;
 
 public record RecurrenceResponse(RecurrenceType type, Integer interval) {
 

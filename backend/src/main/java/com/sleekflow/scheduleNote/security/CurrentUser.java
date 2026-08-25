@@ -1,6 +1,6 @@
 package com.sleekflow.scheduleNote.security;
 
-import com.sleekflow.scheduleNote.domain.User;
+import com.sleekflow.scheduleNote.entity.User;
 
 /**
  * The authenticated user for the request in flight.

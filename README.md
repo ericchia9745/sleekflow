@@ -15,12 +15,21 @@ A TODO list application with recurring tasks, task dependencies, and filtering/s
 - **Filtering** by status, priority, due-date range, blocked/unblocked, and name;
   **sorting** by due date, priority, status, or name — priority and status in
   their natural order, not alphabetically.
+- **One shared list** — every signed-in user sees and edits the same list, and
+  each TODO names the user who created it in an *Owner* column. Deleting and
+  restoring are reserved to the owner; an *Only mine* filter narrows the view
+  without hiding anything.
+- **Bulk operations** — select rows and set a status, delete, or restore them in
+  one request. Best-effort: an item that is blocked or that someone else has
+  edited is reported on its own rather than sinking the batch.
 - **Soft delete** — deleting is reversible; deleted TODOs stay in a recycle-bin view.
 - **Concurrent-safe writes** — optimistic locking rejects a stale write with 409
   rather than silently overwriting another user's edit.
 - **Accounts and sessions** — registration and sign-in, with sessions stored in
   the database and addressed by an opaque bearer token. Passwords are hashed in
-  the browser and again, salted, on the server.
+  the browser and again, salted, on the server. Password change is deliberately
+  unverified — see the [decision log](docs/DECISION_LOG.md) for why, and why it
+  would not survive real users.
 - **Live updates** — a tab picks up another user's changes within five seconds
   by polling a cheap revision endpoint, and another tab's changes instantly over
   a BroadcastChannel.
@@ -56,11 +65,15 @@ task, plus 12,000 generated rows to exercise paging and filtering at scale:
 ./scripts/seed.sh          # ./scripts/seed.sh 0 for just the demo set
 ```
 
+That creates two accounts to sign in as — **`demo` / `demo12345`** and
+**`demo2` / `demo12345`** — and owns the demo data between them, so the Owner
+column and owner-only deletion have something to show.
+
 Or start the backend and frontend together with `./scripts/dev.sh`.
 
-The API requires a session: create an account on first load. `crypto.subtle`
-hashes the password in the browser, which needs a secure context — `localhost`
-qualifies, any other host needs HTTPS.
+The API requires a session: create an account on first load, or sign in as one
+of the seeded ones. `crypto.subtle` hashes the password in the browser, which
+needs a secure context — `localhost` qualifies, any other host needs HTTPS.
 
 ## Prerequisites
 
@@ -105,8 +118,8 @@ missing variables rather than falling back to development values.
 ## Tests
 
 ```bash
-cd backend  && ./mvnw test    # 99 tests: domain, service, security, web layer
-cd frontend && npm test       # 24 tests: hashing, session storage, cross-tab channel, table
+cd backend  && ./mvnw test    # 124 tests: domain, service, security, web layer
+cd frontend && npm test       # 50 tests: hashing, session storage, cross-tab channel, table, bulk bar
 ```
 
 Backend integration tests run against a real MySQL schema (`sleekflow_schedule_note_test`)
@@ -127,8 +140,9 @@ docker/      MySQL container init hook
 
 ## Documentation
 
-- **[Architecture](docs/ARCHITECTURE.md)** — how authentication, sessions, and
-  the live-update mechanism fit together, with diagrams and their trade-offs.
+- **[Architecture](docs/ARCHITECTURE.md)** — how authentication, the shared list
+  and its ownership rules, bulk operations, and the live-update mechanism fit
+  together, with diagrams and their trade-offs.
 - **[Decision log](docs/DECISION_LOG.md)** — how ambiguous requirements were
   interpreted, architectural trade-offs, what was deliberately left out.
 - **[Configuration reference](docs/CONFIGURATION.md)** — every setting, its

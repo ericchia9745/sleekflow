@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-import com.sleekflow.scheduleNote.domain.Todo;
+import com.sleekflow.scheduleNote.entity.Todo;
 import com.sleekflow.scheduleNote.dto.TodoRevisionResponse;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -15,9 +15,7 @@ import org.springframework.data.repository.query.Param;
 
 public interface TodoRepository extends JpaRepository<Todo, Long>, JpaSpecificationExecutor<Todo> {
 
-	Optional<Todo> findByIdAndDeletedAtIsNullAndUserId(Long id, Long userId);
-
-	Optional<Todo> findByIdAndUserId(Long id, Long userId);
+	Optional<Todo> findByIdAndDeletedAtIsNull(Long id);
 
 	/**
 	 * Of the given TODOs, which are blocked. Answering this for a whole page in
@@ -45,9 +43,8 @@ public interface TodoRepository extends JpaRepository<Todo, Long>, JpaSpecificat
 	 * One aggregate row summarising the state of the list, for change polling.
 	 * Two aggregates over an indexed column: far cheaper than shipping a page.
 	 */
-	@Query("SELECT new com.sleekflow.scheduleNote.dto.TodoRevisionResponse(MAX(t.updatedAt), COUNT(t)) FROM Todo t "
-			+ "WHERE t.userId = :userId")
-	TodoRevisionResponse loadRevision(@Param("userId") Long userId);
+	@Query("SELECT new com.sleekflow.scheduleNote.dto.TodoRevisionResponse(MAX(t.updatedAt), COUNT(t)) FROM Todo t")
+	TodoRevisionResponse loadRevision();
 
 	/** TODOs that depend on the given one -- used to explain a blocked state. */
 	@Query("SELECT t FROM Todo t JOIN t.dependencies d WHERE d.id = :id AND t.deletedAt IS NULL")

@@ -3,23 +3,32 @@ package com.sleekflow.scheduleNote.service;
 import java.time.LocalDate;
 import java.util.List;
 
+import com.sleekflow.scheduleNote.dto.BulkFailureResponse;
+import com.sleekflow.scheduleNote.dto.BulkIdsRequest;
+import com.sleekflow.scheduleNote.dto.BulkResultResponse;
+import com.sleekflow.scheduleNote.dto.BulkStatusRequest;
+import com.sleekflow.scheduleNote.dto.BulkTodoRef;
 import com.sleekflow.scheduleNote.dto.ChangeStatusRequest;
 import com.sleekflow.scheduleNote.dto.CreateTodoRequest;
 import com.sleekflow.scheduleNote.dto.RecurrenceRequest;
 import com.sleekflow.scheduleNote.dto.StatusChangeResponse;
 import com.sleekflow.scheduleNote.dto.TodoResponse;
+import com.sleekflow.scheduleNote.dto.TodoRevisionResponse;
+import com.sleekflow.scheduleNote.dto.TodoSummaryResponse;
 import com.sleekflow.scheduleNote.dto.UpdateTodoRequest;
-import com.sleekflow.scheduleNote.domain.RecurrenceType;
-import com.sleekflow.scheduleNote.domain.TodoPriority;
-import com.sleekflow.scheduleNote.domain.TodoStatus;
-import com.sleekflow.scheduleNote.domain.User;
+import com.sleekflow.scheduleNote.domain.enums.RecurrenceType;
+import com.sleekflow.scheduleNote.domain.enums.TodoPriority;
+import com.sleekflow.scheduleNote.domain.enums.TodoStatus;
+import com.sleekflow.scheduleNote.entity.User;
 import com.sleekflow.scheduleNote.repository.TodoRepository;
 import com.sleekflow.scheduleNote.repository.UserRepository;
 import com.sleekflow.scheduleNote.security.CurrentUser;
-import com.sleekflow.scheduleNote.exception.CircularDependencyException;
-import com.sleekflow.scheduleNote.exception.DependenciesNotSatisfiedException;
-import com.sleekflow.scheduleNote.exception.StaleTodoException;
-import com.sleekflow.scheduleNote.exception.TodoNotFoundException;
+import com.sleekflow.scheduleNote.domain.exception.CircularDependencyException;
+import com.sleekflow.scheduleNote.domain.exception.DependenciesNotSatisfiedException;
+import com.sleekflow.scheduleNote.domain.exception.InvalidTodoRequestException;
+import com.sleekflow.scheduleNote.domain.exception.NotTodoOwnerException;
+import com.sleekflow.scheduleNote.domain.exception.StaleTodoException;
+import com.sleekflow.scheduleNote.domain.exception.TodoNotFoundException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -330,7 +339,7 @@ class TodoServiceIntegrationTest {
 			TodoResponse todo = create("mistake");
 			TodoServiceIntegrationTest.this.service.delete(todo.id());
 
-			TodoQuery bin = new TodoQuery(null, null, null, null, null, null, false, true);
+			TodoQuery bin = new TodoQuery(null, null, null, null, null, null, null, false, true);
 			assertThat(TodoServiceIntegrationTest.this.service.list(bin, PageRequest.of(0, 10))).hasSize(1);
 
 			TodoServiceIntegrationTest.this.service.restore(todo.id());
@@ -393,8 +402,8 @@ class TodoServiceIntegrationTest {
 			TodoServiceIntegrationTest.this.service.addDependency(create("bake bread").id(), flour.id());
 			create("unrelated");
 
-			TodoQuery blocked = new TodoQuery(null, null, null, null, true, null, false, false);
-			TodoQuery unblocked = new TodoQuery(null, null, null, null, false, null, false, false);
+			TodoQuery blocked = new TodoQuery(null, null, null, null, null, true, null, false, false);
+			TodoQuery unblocked = new TodoQuery(null, null, null, null, null, false, null, false, false);
 
 			assertThat(TodoServiceIntegrationTest.this.service.list(blocked, PageRequest.of(0, 10))
 				.map(TodoResponse::name)).containsExactly("bake bread");
@@ -412,7 +421,7 @@ class TodoServiceIntegrationTest {
 					LocalDate.of(2026, 12, 1), TodoPriority.LOW, null, List.of()));
 
 			TodoQuery range = new TodoQuery(null, null, LocalDate.of(2026, 5, 1), LocalDate.of(2026, 7, 1), null, null,
-					false, false);
+					null, false, false);
 
 			assertThat(TodoServiceIntegrationTest.this.service.list(range, PageRequest.of(0, 10))
 				.map(TodoResponse::name)).containsExactly("inside");
@@ -427,7 +436,7 @@ class TodoServiceIntegrationTest {
 					TodoPriority.LOW, null, List.of()));
 
 			TodoQuery query = new TodoQuery(List.of(TodoStatus.COMPLETED), List.of(TodoPriority.HIGH), null, null, null,
-					null, false, false);
+					null, null, false, false);
 
 			assertThat(TodoServiceIntegrationTest.this.service.list(query, PageRequest.of(0, 10))
 				.map(TodoResponse::name)).containsExactly("wanted");
@@ -438,7 +447,7 @@ class TodoServiceIntegrationTest {
 			create("Buy Flour");
 			create("bake bread");
 
-			TodoQuery query = new TodoQuery(null, null, null, null, null, "flour", false, false);
+			TodoQuery query = new TodoQuery(null, null, null, null, null, null, "flour", false, false);
 
 			assertThat(TodoServiceIntegrationTest.this.service.list(query, PageRequest.of(0, 10))
 				.map(TodoResponse::name)).containsExactly("Buy Flour");
@@ -457,12 +466,176 @@ class TodoServiceIntegrationTest {
 	}
 
 	@Nested
-	@DisplayName("ownership")
-	class Ownership {
+	@DisplayName("bulk operations")
+	class BulkOperations {
+
+		private BulkTodoRef ref(TodoResponse todo) {
+			return new BulkTodoRef(todo.id(), todo.version());
+		}
+
+		@Test
+		void appliesOneStatusToManyTodos() {
+			TodoResponse first = create("first");
+			TodoResponse second = create("second");
+
+			BulkResultResponse result = TodoServiceIntegrationTest.this.service.changeStatusInBulk(
+					new BulkStatusRequest(TodoStatus.COMPLETED, List.of(ref(first), ref(second))));
+
+			assertThat(result.succeeded()).containsExactly(first.id(), second.id());
+			assertThat(result.failed()).isEmpty();
+			assertThat(TodoServiceIntegrationTest.this.service.get(first.id()).status())
+				.isEqualTo(TodoStatus.COMPLETED);
+		}
+
+		@Test
+		void appliesTheRestWhenOneItemIsStale() {
+			TodoResponse fresh = create("fresh");
+			TodoResponse edited = create("edited");
+			// Someone else gets there first, moving the version on.
+			complete(edited);
+
+			BulkResultResponse result = TodoServiceIntegrationTest.this.service.changeStatusInBulk(
+					new BulkStatusRequest(TodoStatus.ARCHIVED, List.of(ref(fresh), ref(edited))));
+
+			assertThat(result.succeeded()).containsExactly(fresh.id());
+			assertThat(result.failed()).singleElement()
+				.satisfies((failure) -> {
+					assertThat(failure.id()).isEqualTo(edited.id());
+					assertThat(failure.type()).isEqualTo("stale-version");
+				});
+		}
+
+		@Test
+		void reportsBlockedItemsWithoutStoppingTheBatch() {
+			TodoResponse prerequisite = create("shop");
+			TodoResponse dependent = TodoServiceIntegrationTest.this.service.addDependency(create("bake").id(),
+					prerequisite.id());
+			TodoResponse unrelated = create("tidy");
+
+			BulkResultResponse result = TodoServiceIntegrationTest.this.service
+				.changeStatusInBulk(new BulkStatusRequest(TodoStatus.IN_PROGRESS,
+						List.of(ref(dependent), ref(unrelated))));
+
+			assertThat(result.succeeded()).containsExactly(unrelated.id());
+			assertThat(result.failed()).singleElement()
+				.satisfies((failure) -> {
+					assertThat(failure.id()).isEqualTo(dependent.id());
+					assertThat(failure.type()).isEqualTo("dependencies-not-satisfied");
+					assertThat(failure.detail()).contains("shop");
+				});
+		}
+
+		@Test
+		void judgesEveryItemAgainstTheSameStateWhateverOrderTheyArriveIn() {
+			TodoResponse prerequisite = create("shop");
+			TodoResponse dependent = TodoServiceIntegrationTest.this.service.addDependency(create("bake").id(),
+					prerequisite.id());
+
+			// The gate is answered once for the whole batch, before anything is
+			// applied, so an item's outcome cannot depend on where it sits in the
+			// list. Both prerequisite and dependent are in this batch.
+			BulkResultResponse forwards = TodoServiceIntegrationTest.this.service
+				.changeStatusInBulk(new BulkStatusRequest(TodoStatus.IN_PROGRESS,
+						List.of(ref(prerequisite), ref(dependent))));
+
+			assertThat(forwards.succeeded()).containsExactly(prerequisite.id());
+			assertThat(forwards.failed()).extracting(BulkFailureResponse::id).containsExactly(dependent.id());
+		}
+
+		@Test
+		void schedulesTheNextOccurrenceOfEveryRecurringTodoCompleted() {
+			TodoResponse chore = TodoServiceIntegrationTest.this.service
+				.create(new CreateTodoRequest("water the plants", null, LocalDate.of(2026, 3, 10), TodoPriority.LOW,
+						new RecurrenceRequest(RecurrenceType.WEEKLY, null), List.of()));
+			TodoResponse once = create("one-off");
+
+			BulkResultResponse result = TodoServiceIntegrationTest.this.service.changeStatusInBulk(
+					new BulkStatusRequest(TodoStatus.COMPLETED, List.of(ref(chore), ref(once))));
+
+			assertThat(result.succeeded()).hasSize(2);
+			assertThat(result.createdOccurrences()).singleElement()
+				.satisfies((next) -> {
+					assertThat(next.name()).isEqualTo("water the plants");
+					assertThat(next.dueDate()).isEqualTo(LocalDate.of(2026, 3, 17));
+				});
+		}
+
+		@Test
+		void deletesManyAtOnce() {
+			TodoResponse first = create("first");
+			TodoResponse second = create("second");
+
+			BulkResultResponse result = TodoServiceIntegrationTest.this.service
+				.deleteInBulk(new BulkIdsRequest(List.of(first.id(), second.id())));
+
+			assertThat(result.succeeded()).containsExactly(first.id(), second.id());
+			assertThat(TodoServiceIntegrationTest.this.service.list(TodoQuery.empty(), PageRequest.of(0, 10)))
+				.isEmpty();
+		}
+
+		@Test
+		void leavesOtherPeoplesTodosAloneWhenDeletingInBulk() {
+			TodoResponse mine = create("mine");
+			User other = TodoServiceIntegrationTest.this.users
+				.saveAndFlush(new User("other", "Other", "sha256$x$y"));
+			CurrentUser.set(other);
+			TodoResponse theirs = create("theirs");
+			CurrentUser.set(TodoServiceIntegrationTest.this.currentUser);
+
+			BulkResultResponse result = TodoServiceIntegrationTest.this.service
+				.deleteInBulk(new BulkIdsRequest(List.of(mine.id(), theirs.id())));
+
+			assertThat(result.succeeded()).containsExactly(mine.id());
+			assertThat(result.failed()).singleElement()
+				.satisfies((failure) -> assertThat(failure.type()).isEqualTo("not-todo-owner"));
+			assertThat(TodoServiceIntegrationTest.this.service.get(theirs.id()).deletedAt()).isNull();
+		}
+
+		@Test
+		void restoresManyAtOnce() {
+			TodoResponse first = create("first");
+			TodoResponse second = create("second");
+			TodoServiceIntegrationTest.this.service.deleteInBulk(new BulkIdsRequest(List.of(first.id(),
+					second.id())));
+
+			BulkResultResponse result = TodoServiceIntegrationTest.this.service
+				.restoreInBulk(new BulkIdsRequest(List.of(first.id(), second.id())));
+
+			assertThat(result.succeeded()).containsExactly(first.id(), second.id());
+			assertThat(TodoServiceIntegrationTest.this.service.list(TodoQuery.empty(), PageRequest.of(0, 10)))
+				.hasSize(2);
+		}
+
+		@Test
+		void reportsIdsThatAreNotOnTheListAnyMore() {
+			BulkResultResponse result = TodoServiceIntegrationTest.this.service
+				.deleteInBulk(new BulkIdsRequest(List.of(9999L)));
+
+			assertThat(result.succeeded()).isEmpty();
+			assertThat(result.failed()).singleElement()
+				.satisfies((failure) -> assertThat(failure.type()).isEqualTo("todo-not-found"));
+		}
+
+		@Test
+		void refusesABatchLargerThanAPage() {
+			List<Long> tooMany = java.util.stream.LongStream.rangeClosed(1, 201).boxed().toList();
+
+			assertThatExceptionOfType(InvalidTodoRequestException.class)
+				.isThrownBy(() -> TodoServiceIntegrationTest.this.service
+					.deleteInBulk(new BulkIdsRequest(tooMany)));
+		}
+
+	}
+
+	@Nested
+	@DisplayName("shared list and ownership")
+	class SharedList {
+
+		private User other;
 
 		private TodoResponse createAsOtherUser(String name) {
-			User other = TodoServiceIntegrationTest.this.users.saveAndFlush(new User("other", "Other", "sha256$x$y"));
-			CurrentUser.set(other);
+			this.other = TodoServiceIntegrationTest.this.users.saveAndFlush(new User("other", "Other", "sha256$x$y"));
+			CurrentUser.set(this.other);
 			try {
 				return create(name);
 			}
@@ -472,65 +645,132 @@ class TodoServiceIntegrationTest {
 		}
 
 		@Test
-		void listOnlyReturnsTheCallersOwnTodos() {
+		void listReturnsEveryUsersTodos() {
 			create("mine");
 			createAsOtherUser("theirs");
 
 			assertThat(TodoServiceIntegrationTest.this.service.list(TodoQuery.empty(), PageRequest.of(0, 10))
+				.map(TodoResponse::name)).containsExactlyInAnyOrder("mine", "theirs");
+		}
+
+		@Test
+		void everyTodoNamesTheUserWhoCreatedIt() {
+			create("mine");
+			createAsOtherUser("theirs");
+
+			assertThat(TodoServiceIntegrationTest.this.service.list(TodoQuery.empty(), PageRequest.of(0, 10)))
+				.extracting((todo) -> todo.name() + " by " + todo.owner().displayName())
+				.containsExactlyInAnyOrder("mine by Owner", "theirs by Other");
+		}
+
+		@Test
+		void theOwnerFilterNarrowsTheSharedListWithoutHidingIt() {
+			create("mine");
+			createAsOtherUser("theirs");
+			TodoQuery mineOnly = new TodoQuery(null, null, null, null,
+					TodoServiceIntegrationTest.this.currentUser.getId(), null, null, false, false);
+
+			assertThat(TodoServiceIntegrationTest.this.service.list(mineOnly, PageRequest.of(0, 10))
 				.map(TodoResponse::name)).containsExactly("mine");
 		}
 
 		@Test
-		void gettingAnotherUsersTodoIs404() {
+		void anotherUsersTodoCanBeRead() {
 			TodoResponse theirs = createAsOtherUser("theirs");
 
-			assertThatExceptionOfType(TodoNotFoundException.class)
-				.isThrownBy(() -> TodoServiceIntegrationTest.this.service.get(theirs.id()));
+			assertThat(TodoServiceIntegrationTest.this.service.get(theirs.id()).name()).isEqualTo("theirs");
 		}
 
 		@Test
-		void updatingAnotherUsersTodoIs404() {
+		void anotherUsersTodoCanBeEdited() {
 			TodoResponse theirs = createAsOtherUser("theirs");
 
-			assertThatExceptionOfType(TodoNotFoundException.class)
-				.isThrownBy(() -> TodoServiceIntegrationTest.this.service.update(theirs.id(),
-						new UpdateTodoRequest("hijacked", null, theirs.dueDate(), TodoPriority.HIGH, null,
-								theirs.version())));
+			TodoResponse edited = TodoServiceIntegrationTest.this.service.update(theirs.id(),
+					new UpdateTodoRequest("corrected", null, theirs.dueDate(), TodoPriority.HIGH, null,
+							theirs.version()));
+
+			assertThat(edited.name()).isEqualTo("corrected");
+			// Editing does not transfer the TODO: it is still theirs.
+			assertThat(edited.owner().username()).isEqualTo("other");
 		}
 
 		@Test
-		void deletingAnotherUsersTodoIs404() {
+		void anotherUsersTodoCanBeMovedOn() {
 			TodoResponse theirs = createAsOtherUser("theirs");
 
-			assertThatExceptionOfType(TodoNotFoundException.class)
+			StatusChangeResponse changed = TodoServiceIntegrationTest.this.service.changeStatus(theirs.id(),
+					new ChangeStatusRequest(TodoStatus.COMPLETED, theirs.version()));
+
+			assertThat(changed.todo().status()).isEqualTo(TodoStatus.COMPLETED);
+		}
+
+		@Test
+		void deletingAnotherUsersTodoIsRejected() {
+			TodoResponse theirs = createAsOtherUser("theirs");
+
+			assertThatExceptionOfType(NotTodoOwnerException.class)
 				.isThrownBy(() -> TodoServiceIntegrationTest.this.service.delete(theirs.id()));
 		}
 
 		@Test
-		void changingAnotherUsersTodoStatusIs404() {
+		void restoringAnotherUsersTodoIsRejected() {
 			TodoResponse theirs = createAsOtherUser("theirs");
+			CurrentUser.set(this.other);
+			TodoServiceIntegrationTest.this.service.delete(theirs.id());
+			CurrentUser.set(TodoServiceIntegrationTest.this.currentUser);
 
-			assertThatExceptionOfType(TodoNotFoundException.class)
-				.isThrownBy(() -> TodoServiceIntegrationTest.this.service.changeStatus(theirs.id(),
-						new ChangeStatusRequest(TodoStatus.COMPLETED, theirs.version())));
+			assertThatExceptionOfType(NotTodoOwnerException.class)
+				.isThrownBy(() -> TodoServiceIntegrationTest.this.service.restore(theirs.id()));
 		}
 
 		@Test
-		void aTodoCannotBeMadeToDependOnAnotherUsersTodo() {
+		void aTodoMayDependOnAnotherUsersTodo() {
 			TodoResponse mine = create("mine");
 			TodoResponse theirs = createAsOtherUser("theirs");
 
-			assertThatExceptionOfType(TodoNotFoundException.class).isThrownBy(
-					() -> TodoServiceIntegrationTest.this.service.addDependency(mine.id(), theirs.id()));
+			TodoResponse linked = TodoServiceIntegrationTest.this.service.addDependency(mine.id(), theirs.id());
+
+			assertThat(linked.dependencies()).extracting(TodoSummaryResponse::name).containsExactly("theirs");
+			assertThat(linked.blocked()).isTrue();
 		}
 
 		@Test
-		void creatingATodoCannotAttachAnotherUsersDependency() {
+		void creatingATodoMayAttachAnotherUsersDependency() {
 			TodoResponse theirs = createAsOtherUser("theirs");
 
-			assertThatExceptionOfType(TodoNotFoundException.class)
-				.isThrownBy(() -> TodoServiceIntegrationTest.this.service.create(new CreateTodoRequest("mine", null,
-						LocalDate.of(2026, 3, 10), TodoPriority.MEDIUM, null, List.of(theirs.id()))));
+			TodoResponse mine = TodoServiceIntegrationTest.this.service.create(new CreateTodoRequest("mine", null,
+					LocalDate.of(2026, 3, 10), TodoPriority.MEDIUM, null, List.of(theirs.id())));
+
+			assertThat(mine.dependencies()).extracting(TodoSummaryResponse::id).containsExactly(theirs.id());
+		}
+
+		@Test
+		void completingSomeoneElsesRecurringTodoLeavesTheSeriesWithItsOwner() {
+			this.other = TodoServiceIntegrationTest.this.users
+				.saveAndFlush(new User("other", "Other", "sha256$x$y"));
+			CurrentUser.set(this.other);
+			TodoResponse theirs = TodoServiceIntegrationTest.this.service
+				.create(new CreateTodoRequest("water the plants", null, LocalDate.of(2026, 3, 10),
+						TodoPriority.LOW, new RecurrenceRequest(RecurrenceType.WEEKLY, null), List.of()));
+			CurrentUser.set(TodoServiceIntegrationTest.this.currentUser);
+
+			StatusChangeResponse changed = TodoServiceIntegrationTest.this.service.changeStatus(theirs.id(),
+					new ChangeStatusRequest(TodoStatus.COMPLETED, theirs.version()));
+
+			// Whoever ticks off a recurring chore, it stays the chore of whoever
+			// owns the series -- otherwise a single helpful click would migrate
+			// someone's repeating task onto another person's name for good.
+			assertThat(changed.nextOccurrence().owner().username()).isEqualTo("other");
+		}
+
+		@Test
+		void theRevisionFingerprintMovesWhenAnotherUserWrites() {
+			create("mine");
+			TodoRevisionResponse before = TodoServiceIntegrationTest.this.service.revision();
+
+			createAsOtherUser("theirs");
+
+			assertThat(TodoServiceIntegrationTest.this.service.revision()).isNotEqualTo(before);
 		}
 
 	}

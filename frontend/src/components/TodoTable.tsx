@@ -6,10 +6,16 @@ import { DependencyPanel } from './DependencyPanel'
 
 interface Props {
   todos: Todo[]
+  /** The list is shared; this decides whose rows offer Delete and Restore. */
+  currentUserId: number
+  selectedIds: ReadonlySet<number>
   expandedId: number | null
   sortKey: SortKey
   sortDirection: SortDirection
   busyId: number | null
+  onToggleSelect: (id: number) => void
+  /** Select or clear every TODO on the page currently shown. */
+  onToggleSelectPage: (select: boolean) => void
   onSort: (key: SortKey) => void
   onToggleExpand: (id: number) => void
   onStatusChange: (todo: Todo, status: TodoStatus) => void
@@ -24,6 +30,12 @@ const COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'priority', label: 'Priority' },
   { key: 'dueDate', label: 'Due' },
 ]
+
+/**
+ * Anyone may edit anything on the shared list, but only the owner may take a
+ * TODO off it -- so Delete and Restore are the two buttons that go dim.
+ */
+const OWNER_ONLY = 'Only the owner can delete or restore this TODO. You can still edit it.'
 
 /** How many dependency names to show before collapsing the rest into a count. */
 const DEPENDENCIES_SHOWN = 2
@@ -59,7 +71,8 @@ function overdue(todo: Todo): boolean {
 }
 
 export function TodoTable(props: Props) {
-  const { todos, sortKey, sortDirection, onSort } = props
+  const { todos, selectedIds, sortKey, sortDirection, onSort } = props
+  const allOnPageSelected = todos.length > 0 && todos.every((todo) => selectedIds.has(todo.id))
 
   if (todos.length === 0) {
     return <p className="empty">No TODOs match these filters.</p>
@@ -69,6 +82,14 @@ export function TodoTable(props: Props) {
     <table className="todo-table">
       <thead>
         <tr>
+          <th>
+            <input
+              type="checkbox"
+              aria-label="Select every TODO on this page"
+              checked={allOnPageSelected}
+              onChange={(e) => props.onToggleSelectPage(e.target.checked)}
+            />
+          </th>
           <th aria-label="Expand" />
           {COLUMNS.map((column) => (
             <th key={column.key}>
@@ -78,6 +99,7 @@ export function TodoTable(props: Props) {
               </button>
             </th>
           ))}
+          <th>Owner</th>
           <th>Repeats</th>
           <th>Depends on</th>
           <th>Blocked</th>
@@ -88,9 +110,18 @@ export function TodoTable(props: Props) {
         {todos.map((todo) => {
           const expanded = props.expandedId === todo.id
           const busy = props.busyId === todo.id
+          const mine = todo.owner.id === props.currentUserId
           return (
             <Fragment key={todo.id}>
               <tr className={todo.deletedAt ? 'deleted' : undefined}>
+                <td>
+                  <input
+                    type="checkbox"
+                    aria-label={`Select ${todo.name}`}
+                    checked={selectedIds.has(todo.id)}
+                    onChange={() => props.onToggleSelect(todo.id)}
+                  />
+                </td>
                 <td>
                   <button
                     type="button"
@@ -120,6 +151,15 @@ export function TodoTable(props: Props) {
                 <td><span className={`priority priority-${todo.priority.toLowerCase()}`}>{todo.priority}</span></td>
                 <td className={overdue(todo) ? 'overdue' : undefined}>
                   {todo.dueDate ?? <span className="muted">—</span>}
+                </td>
+                <td>
+                  {mine ? (
+                    <span className="owner owner-me" title="Created by you">you</span>
+                  ) : (
+                    <span className="owner" title={todo.owner.username ?? 'Account removed'}>
+                      {todo.owner.displayName}
+                    </span>
+                  )}
                 </td>
                 <td>
                   {todo.recurrence.type === 'NONE'
@@ -161,18 +201,33 @@ export function TodoTable(props: Props) {
                 </td>
                 <td className="actions-cell">
                   {todo.deletedAt ? (
-                    <button type="button" onClick={() => props.onRestore(todo)}>Restore</button>
+                    <button
+                      type="button"
+                      disabled={!mine}
+                      title={mine ? undefined : OWNER_ONLY}
+                      onClick={() => props.onRestore(todo)}
+                    >
+                      Restore
+                    </button>
                   ) : (
                     <>
                       <button type="button" onClick={() => props.onEdit(todo)}>Edit</button>
-                      <button type="button" className="danger" onClick={() => props.onDelete(todo)}>Delete</button>
+                      <button
+                        type="button"
+                        className="danger"
+                        disabled={!mine}
+                        title={mine ? undefined : OWNER_ONLY}
+                        onClick={() => props.onDelete(todo)}
+                      >
+                        Delete
+                      </button>
                     </>
                   )}
                 </td>
               </tr>
               {expanded && (
                 <tr className="detail-row">
-                  <td colSpan={9}>
+                  <td colSpan={11}>
                     <DependencyPanel todo={todo} />
                   </td>
                 </tr>

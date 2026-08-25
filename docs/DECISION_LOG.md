@@ -54,11 +54,40 @@ general way to tell which of them also recur. Copying them would leave the new
 occurrence blocked by tasks that are already done.
 
 **"Multiple users accessing the same TODO list concurrently."**
-Read as correctness under concurrent writes, not as real-time collaboration.
-Handled with optimistic locking: every write carries the version the client last
-saw, and a mismatch returns `409` naming both versions instead of silently
-overwriting someone's edit. Pessimistic locking would serialise unrelated edits;
-last-write-wins would lose them silently.
+This is the requirement I got wrong first, and the reversal is worth recording
+in full.
+
+The phrase supports two readings: *one list that several people share*, or
+*several people each using the application*. I built it shared, then — while
+adding authentication — talked myself into the second reading and scoped every
+query to its owner, on the reasoning that an account that cannot keep anything
+private is a strange product. That was over-thinking a requirement that says
+"the same TODO list" in as many words. I put it back.
+
+So: **one list, shared by everyone, with the creator recorded on every row and
+shown in an Owner column.** Ownership is attribution, not access control, with
+exactly one exception — only the owner may delete or restore. Removing someone
+else's work from a shared list is a different act from correcting it, and it is
+the one that is hard to notice afterwards, because a soft-deleted TODO simply
+stops appearing. An edit announces itself; a deletion does not.
+
+Two costs came with going back, both paid in the same migration:
+
+- The list indexes had been rebuilt owner-first to match owner-scoped queries. A
+  shared list issues the default query with no owner predicate, and MySQL cannot
+  use a `user_id`-led index for that at all, so `V4` restores the
+  `deleted_at`-led ones and keeps a single owner-led index for the optional
+  "only mine" filter.
+- Owner names have to reach the client without an N+1. `Todo` carries a plain
+  `user_id` column rather than a relation, so the service resolves the distinct
+  owners of a page in one query — the same shape as the blocked flag.
+
+Concurrency itself is unchanged and is what the requirement is really about:
+every write carries the version the client last saw, and a mismatch returns
+`409` naming both versions instead of silently overwriting someone's edit.
+Pessimistic locking would serialise unrelated edits; last-write-wins would lose
+them silently. Sharing the list is what finally makes that machinery earn its
+keep — two people really can now be editing the same row.
 
 ## 2. Architectural decisions and trade-offs
 
@@ -76,7 +105,10 @@ of every dependency. Deriving it row by row is an N+1 query, which is exactly
 what falls over at 10,000 items. The list endpoint issues one extra query for
 the whole page (`findBlockedIdsAmong`), and the blocked/unblocked *filter* is an
 `EXISTS` subquery so the database does the work and the count stays accurate.
-Measured over 12,006 rows, every filter and sort returns in under 25 ms.
+Measured over 12,011 rows — re-run after the list became shared and `V4`
+reshaped the indexes — every filter and sort returns in under 25 ms: 18 ms for
+the default page, 22 ms for the slowest filter, 4 ms for the revision
+fingerprint, and 79 ms for a full 200-item bulk operation.
 
 **Offset paging with a stable tie-breaker.** Every sort has `id` appended, so
 paging cannot repeat or skip rows when values tie. Page size is capped at 200
@@ -104,10 +136,18 @@ is missing. Full reference in [CONFIGURATION.md](CONFIGURATION.md).
 Both were added after the core features, and both are covered in detail in
 [ARCHITECTURE.md](ARCHITECTURE.md). The decisions worth recording here:
 
-**Authentication gates access; it does not partition data.** The original
-requirement asks for "multiple users accessing the same TODO list" — one list,
-several people. So TODOs have no owner column and every signed-in user sees the
-same list. Per-user lists would be a different product.
+**Authentication gates access; it does not partition data.** Signing in decides
+whether you may use the list at all, not which parts of it you may see. See
+section 1 for how I arrived at that, having first built the opposite.
+
+**Password change with no verification is a placeholder, and is labelled one.**
+`POST /api/auth/change-password` replaces a password given only a username: no
+current password, no emailed link. Anyone who knows a username can take that
+account over. It exists because no email address is collected at registration,
+so there is nowhere a reset link could go, and an account with no recovery path
+at all is its own kind of failure for a demo. The real fix is an email address
+and a single-use expiring token; the interim state is documented rather than
+quietly shipped, because the failure mode here is not obvious from the UI.
 
 **Sessions in the database, not JWTs.** An opaque random token with a row behind
 it makes revocation an `UPDATE`. A JWT would avoid the lookup but make sign-out
@@ -136,11 +176,43 @@ tab can ask. That is no weaker than `localStorage`, weaker than strict per-tab
 isolation, and all three lose to XSS. `httpOnly` cookies plus CSRF handling is
 the right answer before real users.
 
-## 4. What I chose not to build
+## 4. Bulk operations, and the question that delayed them
 
-- **Bulk operations.** Straightforward to add on the existing service, but they
-  raise a design question — partial failure semantics — that deserves more than
-  a quick answer.
+These were deferred at first, on the grounds that partial-failure semantics
+deserved more than a quick answer. They are now built, and the answer is worth
+stating because it is the whole of the design.
+
+**A batch is best-effort, and reports on every item.** In a batch of forty, "one
+of these is blocked" and "someone else edited one of these" are expected
+outcomes for a row, not failures of the request. All-or-nothing would send the
+user back to retry the same forty and hit a different single conflict. So the
+endpoints return `200` with `succeeded` and `failed` side by side, and each
+failure carries the same `type` slug the equivalent single-item endpoint would
+have put in its RFC 9457 problem document — a stable code, not prose.
+
+**Versions travel per item.** A single request-level version could not tell "one
+row moved" from "everything you hold is stale". Delete and restore take bare
+ids, matching their single-item endpoints, which ask for no version either:
+taking a TODO off the list is not an edit of its contents.
+
+**The dependency gate is answered once for the whole batch**, in the same
+`findBlockedIdsAmong` query the list endpoint uses. That keeps a 200-item batch
+off the N+1 path and makes an item's outcome independent of its position in the
+request.
+
+**What is still not built is bulk-by-filter** — "complete all 10,000 matching
+this filter". Resolving the set server-side makes per-item version checks
+impossible by construction, because the client never saw the rows. That is a
+different feature with a different safety story. What exists is bulk-by-ids,
+capped at `PAGE_SIZE_MAX`, so a client acts on exactly what it has seen.
+
+One trap worth recording: bulk soft-delete reads like a one-line JPQL `UPDATE`.
+That would skip `@Version` and `@PreUpdate`, leaving `updated_at` untouched — and
+since the revision fingerprint is `MAX(updated_at)`, every other open tab would
+keep showing stale data. Same family as the seed-script bug in section 6.
+
+## 5. What I chose not to build
+
 - **An audit trail.** Soft delete satisfies the stated requirement. Full history
   is a different feature with different storage costs.
 - **Testcontainers.** Tests run against a real MySQL schema, which is the point;
@@ -151,11 +223,17 @@ the right answer before real users.
   MySQL only, and is written-but-unverified since Docker is not installed here.
   I would rather say so than imply it has been run.
 
-Also left out with authentication in place: roles and permissions, password
-reset, email verification, and any rate limiting on sign-in. Throttling is the
-first thing a real deployment needs — nothing currently slows down guessing.
+- **A CI pipeline.** There is no `.github/workflows`. Both suites run with one
+  command each, so this is a short file rather than a design problem, but it is
+  honest to say it is absent.
 
-## 5. What I would do differently with more time
+Also left out with authentication in place: roles and permissions beyond
+owner-only deletion, real password recovery, email verification, and any rate
+limiting on sign-in. Throttling is the first thing a real deployment needs —
+nothing currently slows down guessing, and change-password makes that worse
+rather than better.
+
+## 6. What I would do differently with more time
 
 - **Keyset pagination** for the common sorts, so deep pages stay flat.
 - **A concurrent test that actually races two writers** against the same TODO.
@@ -166,11 +244,14 @@ first thing a real deployment needs — nothing currently slows down guessing.
 - **Property-based tests for recurrence arithmetic.** The month-end and leap-day
   cases are covered by hand-picked examples; generated dates would cover more.
 - **Richer dependency visualisation.** The UI shows what a task depends on, but
-  not what it blocks, and there is no graph view.
+  not what it blocks, and there is no graph view. (`TodoRepository.findDependents`
+  exists for this and is currently unused.)
+- **Bulk-by-filter**, with a conflict story that does not depend on the client
+  having seen every row.
 - **Extract the frontend's filter state into the URL**, so a filtered view can be
   shared or reloaded.
 
-## 6. Two bugs worth recording
+## 7. Two bugs worth recording
 
 **A conflict that never happened.** The first version of the service built its
 response DTO before the transaction flushed. Hibernate increments `@Version` at flush, so the API returned the
