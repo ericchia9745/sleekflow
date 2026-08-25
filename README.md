@@ -8,7 +8,10 @@ A TODO list application with recurring tasks, task dependencies, and filtering/s
 - **Recurring TODOs** — daily, weekly, monthly, or every N days. Completing one
   schedules the next occurrence automatically and links it to the series.
 - **Dependencies** — a TODO can depend on others and cannot move to *In progress*
-  until they are all completed. Cycles are rejected when the edge is added.
+  until they are all completed. Cycles are rejected when the edge is added. The
+  list names each prerequisite in a *Depends on* column — outstanding ones
+  highlighted, settled ones struck through — so a blocked task says what it is
+  waiting for without opening the row.
 - **Filtering** by status, priority, due-date range, blocked/unblocked, and name;
   **sorting** by due date, priority, status, or name — priority and status in
   their natural order, not alphabetically.

@@ -3,7 +3,7 @@ import { render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { TodoTable } from '../components/TodoTable'
-import type { Todo } from '../types'
+import type { Todo, TodoSummary } from '../types'
 
 function todo(overrides: Partial<Todo> = {}): Todo {
   return {
@@ -72,6 +72,90 @@ describe('TodoTable', () => {
   it('shows the repeat schedule with its interval', () => {
     renderTable([todo({ recurrence: { type: 'CUSTOM', interval: 10 } })])
     expect(screen.getByText('CUSTOM ×10')).toBeInTheDocument()
+  })
+
+  describe('the Depends on column', () => {
+    const dependency = (overrides: Partial<TodoSummary> = {}): TodoSummary => ({
+      id: 10,
+      name: 'buy flour',
+      status: 'NOT_STARTED',
+      deleted: false,
+      ...overrides,
+    })
+
+    it('names the prerequisite instead of only saying the task is blocked', () => {
+      renderTable([todo({ blocked: true, dependencies: [dependency()] })])
+      expect(screen.getByText('#10 buy flour')).toBeInTheDocument()
+    })
+
+    it('marks an outstanding prerequisite as the thing being waited on', () => {
+      renderTable([todo({ blocked: true, dependencies: [dependency()] })])
+      expect(screen.getByText('#10 buy flour')).toHaveClass('dependency-outstanding')
+    })
+
+    it('shows a completed prerequisite as settled rather than hiding it', () => {
+      // Still worth seeing: it explains why a task with dependencies is not blocked.
+      renderTable([todo({ dependencies: [dependency({ status: 'COMPLETED' })] })])
+      expect(screen.getByText('#10 buy flour')).toHaveClass('dependency-done')
+    })
+
+    it('distinguishes a deleted prerequisite, which no longer blocks', () => {
+      renderTable([todo({ dependencies: [dependency({ deleted: true })] })])
+      expect(screen.getByText('#10 buy flour')).toHaveClass('dependency-deleted')
+    })
+
+    it('puts outstanding prerequisites ahead of settled ones', () => {
+      renderTable([
+        todo({
+          blocked: true,
+          dependencies: [
+            dependency({ id: 1, name: 'done one', status: 'COMPLETED' }),
+            dependency({ id: 2, name: 'still open' }),
+          ],
+        }),
+      ])
+      const shown = screen.getAllByText(/^#\d+ /).map((node) => node.textContent)
+      expect(shown[0]).toBe('#2 still open')
+    })
+
+    it('collapses a long list behind a count rather than flooding the row', () => {
+      renderTable([
+        todo({
+          dependencies: [1, 2, 3, 4].map((id) => dependency({ id, name: `task ${id}` })),
+        }),
+      ])
+      expect(screen.getByRole('button', { name: '+2 more' })).toBeInTheDocument()
+    })
+
+    it('expands the row when the overflow count is clicked', async () => {
+      const onToggleExpand = vi.fn()
+      const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      render(
+        <QueryClientProvider client={client}>
+          <TodoTable
+            todos={[todo({ dependencies: [1, 2, 3].map((id) => dependency({ id, name: `task ${id}` })) })]}
+            expandedId={null}
+            sortKey="dueDate"
+            sortDirection="asc"
+            busyId={null}
+            onSort={vi.fn()}
+            onToggleExpand={onToggleExpand}
+            onStatusChange={vi.fn()}
+            onEdit={vi.fn()}
+            onDelete={vi.fn()}
+            onRestore={vi.fn()}
+          />
+        </QueryClientProvider>,
+      )
+      screen.getByRole('button', { name: '+1 more' }).click()
+      expect(onToggleExpand).toHaveBeenCalledWith(1)
+    })
+
+    it('shows a dash when a TODO has no prerequisites', () => {
+      renderTable([todo({ dependencies: [] })])
+      const row = screen.getByText('bake bread').closest('tr')!
+      expect(within(row).getAllByText('—').length).toBeGreaterThan(0)
+    })
   })
 
   it('tells the user when nothing matches instead of showing an empty grid', () => {

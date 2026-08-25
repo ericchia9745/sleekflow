@@ -192,3 +192,18 @@ p.error { margin: 0 0 0.75rem; }
 }
 .auth-form { width: min(26rem, 100%); }
 .header-actions { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+
+/* --- Dependency column --- */
+.depends-cell { max-width: 18rem; }
+.dependency {
+  display: block;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Outstanding prerequisites are the ones holding the task up. */
+.dependency-outstanding { color: var(--warn); }
+.dependency-done { color: var(--muted); text-decoration: line-through; }
+.dependency-deleted { color: var(--muted); font-style: italic; }

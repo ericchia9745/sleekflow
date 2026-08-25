@@ -1,7 +1,7 @@
 import { Fragment } from 'react'
 
 import { STATUSES, STATUS_LABELS } from '../types'
-import type { SortDirection, SortKey, Todo, TodoStatus } from '../types'
+import type { SortDirection, SortKey, Todo, TodoStatus, TodoSummary } from '../types'
 import { DependencyPanel } from './DependencyPanel'
 
 interface Props {
@@ -24,6 +24,34 @@ const COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'priority', label: 'Priority' },
   { key: 'dueDate', label: 'Due' },
 ]
+
+/** How many dependency names to show before collapsing the rest into a count. */
+const DEPENDENCIES_SHOWN = 2
+
+/**
+ * The prerequisites of a TODO, most relevant first.
+ *
+ * Outstanding ones are what actually hold the task up, so they lead; completed
+ * and deleted ones are still worth showing -- they explain why a task that
+ * looks blocked no longer is -- but they belong behind.
+ */
+function orderedDependencies(todo: Todo): TodoSummary[] {
+  const weight = (dependency: TodoSummary) =>
+    dependency.deleted ? 2 : dependency.status === 'COMPLETED' ? 1 : 0
+  return [...todo.dependencies].sort((a, b) => weight(a) - weight(b))
+}
+
+function dependencyState(dependency: TodoSummary): string {
+  if (dependency.deleted) return 'dependency dependency-deleted'
+  return dependency.status === 'COMPLETED' ? 'dependency dependency-done' : 'dependency dependency-outstanding'
+}
+
+function dependencyTitle(dependency: TodoSummary): string {
+  if (dependency.deleted) return `#${dependency.id} was deleted, so it no longer blocks this TODO`
+  return dependency.status === 'COMPLETED'
+    ? `#${dependency.id} is completed`
+    : `Waiting on #${dependency.id} (${STATUS_LABELS[dependency.status]})`
+}
 
 function overdue(todo: Todo): boolean {
   if (!todo.dueDate || todo.status === 'COMPLETED' || todo.status === 'ARCHIVED') return false
@@ -51,6 +79,7 @@ export function TodoTable(props: Props) {
             </th>
           ))}
           <th>Repeats</th>
+          <th>Depends on</th>
           <th>Blocked</th>
           <th>Actions</th>
         </tr>
@@ -97,6 +126,34 @@ export function TodoTable(props: Props) {
                     ? <span className="muted">—</span>
                     : `${todo.recurrence.type}${todo.recurrence.interval && todo.recurrence.interval > 1 ? ` ×${todo.recurrence.interval}` : ''}`}
                 </td>
+                <td className="depends-cell">
+                  {todo.dependencies.length === 0 ? (
+                    <span className="muted">—</span>
+                  ) : (
+                    <>
+                      {orderedDependencies(todo)
+                        .slice(0, DEPENDENCIES_SHOWN)
+                        .map((dependency) => (
+                          <span
+                            key={dependency.id}
+                            className={dependencyState(dependency)}
+                            title={dependencyTitle(dependency)}
+                          >
+                            #{dependency.id} {dependency.name}
+                          </span>
+                        ))}
+                      {todo.dependencies.length > DEPENDENCIES_SHOWN && (
+                        <button
+                          type="button"
+                          className="link small"
+                          onClick={() => props.onToggleExpand(todo.id)}
+                        >
+                          +{todo.dependencies.length - DEPENDENCIES_SHOWN} more
+                        </button>
+                      )}
+                    </>
+                  )}
+                </td>
                 <td>
                   {todo.blocked
                     ? <span className="tag tag-blocked" title="Waiting on a dependency">blocked</span>
@@ -115,7 +172,7 @@ export function TodoTable(props: Props) {
               </tr>
               {expanded && (
                 <tr className="detail-row">
-                  <td colSpan={8}>
+                  <td colSpan={9}>
                     <DependencyPanel todo={todo} />
                   </td>
                 </tr>
