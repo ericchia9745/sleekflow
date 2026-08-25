@@ -5,9 +5,9 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Comparator;
 
-import com.sleekflow.scheduleNote.domain.Todo;
-import com.sleekflow.scheduleNote.domain.TodoPriority;
-import com.sleekflow.scheduleNote.domain.TodoStatus;
+import com.sleekflow.scheduleNote.entity.Todo;
+import com.sleekflow.scheduleNote.domain.enums.TodoPriority;
+import com.sleekflow.scheduleNote.domain.enums.TodoStatus;
 
 /**
  * @param owner who created this TODO. The list is shared, so this is

@@ -1,4 +1,4 @@
-package com.sleekflow.scheduleNote.exception;
+package com.sleekflow.scheduleNote.domain.exception;
 
 /** Raised for requests that are well-formed but cannot be applied. */
 public class InvalidTodoRequestException extends RuntimeException {

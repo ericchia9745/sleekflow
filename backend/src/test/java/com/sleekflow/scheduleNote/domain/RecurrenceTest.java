@@ -2,6 +2,9 @@ package com.sleekflow.scheduleNote.domain;
 
 import java.time.LocalDate;
 
+import com.sleekflow.scheduleNote.domain.enums.RecurrenceType;
+import com.sleekflow.scheduleNote.entity.Recurrence;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;

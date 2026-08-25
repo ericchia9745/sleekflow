@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-import com.sleekflow.scheduleNote.domain.Todo;
+import com.sleekflow.scheduleNote.entity.Todo;
 import com.sleekflow.scheduleNote.dto.TodoRevisionResponse;
 
 import org.springframework.data.jpa.repository.JpaRepository;

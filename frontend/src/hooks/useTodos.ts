@@ -82,6 +82,27 @@ export function useRestoreTodo() {
   return useMutation({ mutationFn: (id: number) => api.restoreTodo(id), onSuccess: invalidate })
 }
 
+export function useBulkChangeStatus() {
+  const invalidate = useInvalidateTodos()
+  return useMutation({
+    mutationFn: ({ status, items }: { status: TodoStatus; items: { id: number; version: number }[] }) =>
+      api.bulkChangeStatus(status, items),
+    // Settled rather than success: a batch that partly failed still changed
+    // rows, and the failures are exactly the ones whose versions are now stale.
+    onSettled: invalidate,
+  })
+}
+
+export function useBulkDelete() {
+  const invalidate = useInvalidateTodos()
+  return useMutation({ mutationFn: (ids: number[]) => api.bulkDelete(ids), onSettled: invalidate })
+}
+
+export function useBulkRestore() {
+  const invalidate = useInvalidateTodos()
+  return useMutation({ mutationFn: (ids: number[]) => api.bulkRestore(ids), onSettled: invalidate })
+}
+
 export function useAddDependency() {
   const invalidate = useInvalidateTodos()
   return useMutation({

@@ -1,4 +1,4 @@
-package com.sleekflow.scheduleNote.domain;
+package com.sleekflow.scheduleNote.entity;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -22,6 +22,9 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import org.hibernate.annotations.BatchSize;
+
+import com.sleekflow.scheduleNote.domain.enums.TodoPriority;
+import com.sleekflow.scheduleNote.domain.enums.TodoStatus;
 
 /**
  * A single TODO item.

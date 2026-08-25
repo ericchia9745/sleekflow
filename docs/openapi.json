@@ -1,968 +1,1237 @@
 {
-    "openapi": "3.1.0",
-    "info": {
-        "title": "SleekFlow TODO API",
-        "description": "Manage TODOs with recurrence schedules and task dependencies.",
-        "license": {
-            "name": "MIT"
-        },
-        "version": "v1"
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SleekFlow TODO API",
+    "description": "Manage TODOs with recurrence schedules and task dependencies.",
+    "license": {
+      "name": "MIT"
     },
-    "servers": [
-        {
-            "url": "http://localhost:8080",
-            "description": "Generated server url"
-        }
-    ],
-    "tags": [
-        {
-            "name": "TODOs",
-            "description": "Create, organise, and track TODO items"
-        },
-        {
-            "name": "Authentication",
-            "description": "Registration, sign-in, and session management"
-        }
-    ],
-    "paths": {
-        "/api/todos/{id}": {
-            "get": {
-                "tags": [
-                    "TODOs"
-                ],
-                "summary": "Fetch a single TODO, including soft-deleted ones",
-                "operationId": "get",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer",
-                            "format": "int64"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/TodoResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "put": {
-                "tags": [
-                    "TODOs"
-                ],
-                "summary": "Update a TODO",
-                "description": "Requires the version last seen by the client; a mismatch returns 409.",
-                "operationId": "update",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer",
-                            "format": "int64"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/UpdateTodoRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/TodoResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "tags": [
-                    "TODOs"
-                ],
-                "summary": "Soft-delete a TODO",
-                "description": "The TODO is hidden from the default list but retained and can be restored.",
-                "operationId": "delete",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer",
-                            "format": "int64"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    }
-                }
-            }
-        },
-        "/api/todos": {
-            "get": {
-                "tags": [
-                    "TODOs"
-                ],
-                "summary": "List TODOs",
-                "description": "Filter by status, priority, due-date range, dependency state, and name.\nSort with `sort=<key>,<asc|desc>` using dueDate, priority, status, name,\ncreatedAt, or updatedAt -- priority and status sort in their natural\norder rather than alphabetically. Results are always paged.",
-                "operationId": "list",
-                "parameters": [
-                    {
-                        "name": "status",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "string",
-                                "enum": [
-                                    "NOT_STARTED",
-                                    "IN_PROGRESS",
-                                    "COMPLETED",
-                                    "ARCHIVED"
-                                ]
-                            }
-                        }
-                    },
-                    {
-                        "name": "priority",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "string",
-                                "enum": [
-                                    "LOW",
-                                    "MEDIUM",
-                                    "HIGH"
-                                ]
-                            }
-                        }
-                    },
-                    {
-                        "name": "dueFrom",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "string",
-                            "format": "date"
-                        }
-                    },
-                    {
-                        "name": "dueTo",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "string",
-                            "format": "date"
-                        }
-                    },
-                    {
-                        "name": "blocked",
-                        "in": "query",
-                        "description": "true for TODOs waiting on a dependency, false for ones clear to start",
-                        "required": false,
-                        "schema": {
-                            "type": "boolean"
-                        }
-                    },
-                    {
-                        "name": "search",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "includeDeleted",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "boolean",
-                            "default": false
-                        }
-                    },
-                    {
-                        "name": "deletedOnly",
-                        "in": "query",
-                        "description": "Show only soft-deleted TODOs",
-                        "required": false,
-                        "schema": {
-                            "type": "boolean",
-                            "default": false
-                        }
-                    },
-                    {
-                        "name": "pageable",
-                        "in": "query",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/components/schemas/Pageable"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/PagedModelTodoResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "tags": [
-                    "TODOs"
-                ],
-                "summary": "Create a TODO",
-                "operationId": "create",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/CreateTodoRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/TodoResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/todos/{id}/restore": {
-            "post": {
-                "tags": [
-                    "TODOs"
-                ],
-                "summary": "Restore a soft-deleted TODO",
-                "operationId": "restore",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer",
-                            "format": "int64"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/TodoResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/todos/{id}/dependencies": {
-            "post": {
-                "tags": [
-                    "TODOs"
-                ],
-                "summary": "Make this TODO depend on another",
-                "description": "Rejected with 409 if the edge would create a dependency cycle.",
-                "operationId": "addDependency",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer",
-                            "format": "int64"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/AddDependencyRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/TodoResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/auth/register": {
-            "post": {
-                "tags": [
-                    "Authentication"
-                ],
-                "summary": "Register and sign in",
-                "description": "`password` must be the hex-encoded SHA-256 of the user's password: the\nclient hashes it so the plaintext never crosses the wire. The server\nsalts and hashes that value again before storing it.\nReturns a bearer token, which is shown only here.",
-                "operationId": "register",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/RegisterRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/SessionResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/auth/logout": {
-            "post": {
-                "tags": [
-                    "Authentication"
-                ],
-                "summary": "Sign out",
-                "description": "Revokes the session behind the supplied token. Other sessions are unaffected.",
-                "operationId": "logout",
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                }
-            }
-        },
-        "/api/auth/login": {
-            "post": {
-                "tags": [
-                    "Authentication"
-                ],
-                "summary": "Sign in",
-                "description": "Takes the same hex-encoded SHA-256 as registration. Returns a bearer token.",
-                "operationId": "login",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/LoginRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/SessionResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/todos/{id}/status": {
-            "patch": {
-                "tags": [
-                    "TODOs"
-                ],
-                "summary": "Change a TODO's status",
-                "description": "Moving to IN_PROGRESS fails with 409 while any dependency is unfinished.\nCompleting a recurring TODO also schedules the next occurrence, which is\nreturned alongside the updated TODO.",
-                "operationId": "changeStatus",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer",
-                            "format": "int64"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/ChangeStatusRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/StatusChangeResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/todos/revision": {
-            "get": {
-                "tags": [
-                    "TODOs"
-                ],
-                "summary": "Fingerprint of the list, for change polling",
-                "description": "Returns the newest update timestamp and the row count. Clients poll this\nand refetch only when it differs from what they hold, which keeps an\nidle tab from pulling the list on a timer.",
-                "operationId": "revision",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/TodoRevisionResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/auth/me": {
-            "get": {
-                "tags": [
-                    "Authentication"
-                ],
-                "summary": "The signed-in user",
-                "description": "Used by the client on start-up to decide whether a stored token is still good.",
-                "operationId": "me",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/AuthenticatedUserResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/todos/{id}/dependencies/{dependsOnId}": {
-            "delete": {
-                "tags": [
-                    "TODOs"
-                ],
-                "summary": "Remove a dependency edge",
-                "operationId": "removeDependency",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer",
-                            "format": "int64"
-                        }
-                    },
-                    {
-                        "name": "dependsOnId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer",
-                            "format": "int64"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/TodoResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    },
-    "components": {
-        "schemas": {
-            "RecurrenceRequest": {
-                "type": "object",
-                "properties": {
-                    "type": {
-                        "type": "string",
-                        "enum": [
-                            "NONE",
-                            "DAILY",
-                            "WEEKLY",
-                            "MONTHLY",
-                            "CUSTOM"
-                        ]
-                    },
-                    "interval": {
-                        "type": "integer",
-                        "format": "int32",
-                        "maximum": 365,
-                        "minimum": 0
-                    }
-                },
-                "required": [
-                    "type"
-                ]
-            },
-            "UpdateTodoRequest": {
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "maxLength": 200,
-                        "minLength": 0
-                    },
-                    "description": {
-                        "type": "string",
-                        "maxLength": 2000,
-                        "minLength": 0
-                    },
-                    "dueDate": {
-                        "type": "string",
-                        "format": "date"
-                    },
-                    "priority": {
-                        "type": "string",
-                        "enum": [
-                            "LOW",
-                            "MEDIUM",
-                            "HIGH"
-                        ]
-                    },
-                    "recurrence": {
-                        "$ref": "#/components/schemas/RecurrenceRequest"
-                    },
-                    "version": {
-                        "type": "integer",
-                        "format": "int64"
-                    }
-                },
-                "required": [
-                    "name",
-                    "priority",
-                    "version"
-                ]
-            },
-            "RecurrenceResponse": {
-                "type": "object",
-                "properties": {
-                    "type": {
-                        "type": "string",
-                        "enum": [
-                            "NONE",
-                            "DAILY",
-                            "WEEKLY",
-                            "MONTHLY",
-                            "CUSTOM"
-                        ]
-                    },
-                    "interval": {
-                        "type": "integer",
-                        "format": "int32"
-                    }
-                }
-            },
-            "TodoResponse": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "integer",
-                        "format": "int64"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "description": {
-                        "type": "string"
-                    },
-                    "dueDate": {
-                        "type": "string",
-                        "format": "date"
-                    },
-                    "status": {
-                        "type": "string",
-                        "enum": [
-                            "NOT_STARTED",
-                            "IN_PROGRESS",
-                            "COMPLETED",
-                            "ARCHIVED"
-                        ]
-                    },
-                    "priority": {
-                        "type": "string",
-                        "enum": [
-                            "LOW",
-                            "MEDIUM",
-                            "HIGH"
-                        ]
-                    },
-                    "recurrence": {
-                        "$ref": "#/components/schemas/RecurrenceResponse"
-                    },
-                    "recurrenceSourceId": {
-                        "type": "integer",
-                        "format": "int64"
-                    },
-                    "dependencies": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/TodoSummaryResponse"
-                        }
-                    },
-                    "blocked": {
-                        "type": "boolean"
-                    },
-                    "completedAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "deletedAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "createdAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "updatedAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "version": {
-                        "type": "integer",
-                        "format": "int64"
-                    }
-                }
-            },
-            "TodoSummaryResponse": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "integer",
-                        "format": "int64"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "status": {
-                        "type": "string",
-                        "enum": [
-                            "NOT_STARTED",
-                            "IN_PROGRESS",
-                            "COMPLETED",
-                            "ARCHIVED"
-                        ]
-                    },
-                    "deleted": {
-                        "type": "boolean"
-                    }
-                }
-            },
-            "CreateTodoRequest": {
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "maxLength": 200,
-                        "minLength": 0
-                    },
-                    "description": {
-                        "type": "string",
-                        "maxLength": 2000,
-                        "minLength": 0
-                    },
-                    "dueDate": {
-                        "type": "string",
-                        "format": "date"
-                    },
-                    "priority": {
-                        "type": "string",
-                        "enum": [
-                            "LOW",
-                            "MEDIUM",
-                            "HIGH"
-                        ]
-                    },
-                    "recurrence": {
-                        "$ref": "#/components/schemas/RecurrenceRequest"
-                    },
-                    "dependencyIds": {
-                        "type": "array",
-                        "items": {
-                            "type": "integer",
-                            "format": "int64"
-                        }
-                    }
-                },
-                "required": [
-                    "name"
-                ]
-            },
-            "AddDependencyRequest": {
-                "type": "object",
-                "properties": {
-                    "dependsOnId": {
-                        "type": "integer",
-                        "format": "int64"
-                    }
-                },
-                "required": [
-                    "dependsOnId"
-                ]
-            },
-            "RegisterRequest": {
-                "type": "object",
-                "properties": {
-                    "username": {
-                        "type": "string",
-                        "maxLength": 60,
-                        "minLength": 3,
-                        "pattern": "^[a-zA-Z0-9._-]+$"
-                    },
-                    "displayName": {
-                        "type": "string",
-                        "maxLength": 100,
-                        "minLength": 0
-                    },
-                    "password": {
-                        "type": "string",
-                        "minLength": 1,
-                        "pattern": "^[a-f0-9]{64}$"
-                    }
-                },
-                "required": [
-                    "password",
-                    "username"
-                ]
-            },
-            "AuthenticatedUserResponse": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "integer",
-                        "format": "int64"
-                    },
-                    "username": {
-                        "type": "string"
-                    },
-                    "displayName": {
-                        "type": "string"
-                    },
-                    "createdAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    }
-                }
-            },
-            "SessionResponse": {
-                "type": "object",
-                "properties": {
-                    "token": {
-                        "type": "string"
-                    },
-                    "expiresAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "user": {
-                        "$ref": "#/components/schemas/AuthenticatedUserResponse"
-                    }
-                }
-            },
-            "LoginRequest": {
-                "type": "object",
-                "properties": {
-                    "username": {
-                        "type": "string",
-                        "minLength": 1
-                    },
-                    "password": {
-                        "type": "string",
-                        "minLength": 1
-                    }
-                },
-                "required": [
-                    "password",
-                    "username"
-                ]
-            },
-            "ChangeStatusRequest": {
-                "type": "object",
-                "properties": {
-                    "status": {
-                        "type": "string",
-                        "enum": [
-                            "NOT_STARTED",
-                            "IN_PROGRESS",
-                            "COMPLETED",
-                            "ARCHIVED"
-                        ]
-                    },
-                    "version": {
-                        "type": "integer",
-                        "format": "int64"
-                    }
-                },
-                "required": [
-                    "status",
-                    "version"
-                ]
-            },
-            "StatusChangeResponse": {
-                "type": "object",
-                "properties": {
-                    "todo": {
-                        "$ref": "#/components/schemas/TodoResponse"
-                    },
-                    "nextOccurrence": {
-                        "$ref": "#/components/schemas/TodoResponse"
-                    }
-                }
-            },
-            "Pageable": {
-                "type": "object",
-                "properties": {
-                    "page": {
-                        "type": "integer",
-                        "format": "int32",
-                        "minimum": 0
-                    },
-                    "size": {
-                        "type": "integer",
-                        "format": "int32",
-                        "minimum": 1
-                    },
-                    "sort": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    }
-                }
-            },
-            "PageMetadata": {
-                "type": "object",
-                "properties": {
-                    "size": {
-                        "type": "integer",
-                        "format": "int64"
-                    },
-                    "number": {
-                        "type": "integer",
-                        "format": "int64"
-                    },
-                    "totalElements": {
-                        "type": "integer",
-                        "format": "int64"
-                    },
-                    "totalPages": {
-                        "type": "integer",
-                        "format": "int64"
-                    }
-                }
-            },
-            "PagedModelTodoResponse": {
-                "type": "object",
-                "properties": {
-                    "content": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/TodoResponse"
-                        }
-                    },
-                    "page": {
-                        "$ref": "#/components/schemas/PageMetadata"
-                    }
-                }
-            },
-            "TodoRevisionResponse": {
-                "type": "object",
-                "properties": {
-                    "lastModifiedAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "total": {
-                        "type": "integer",
-                        "format": "int64"
-                    }
-                }
-            }
-        }
+    "version": "v1"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8099",
+      "description": "Generated server url"
     }
+  ],
+  "tags": [
+    {
+      "name": "TODOs",
+      "description": "Create, organise, and track TODO items"
+    },
+    {
+      "name": "Authentication",
+      "description": "Registration, sign-in, and session management"
+    }
+  ],
+  "paths": {
+    "/api/todos/{id}": {
+      "get": {
+        "tags": [
+          "TODOs"
+        ],
+        "summary": "Fetch a single TODO, including soft-deleted ones",
+        "operationId": "get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodoResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "TODOs"
+        ],
+        "summary": "Update a TODO",
+        "description": "Requires the version last seen by the client; a mismatch returns 409.",
+        "operationId": "update",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTodoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodoResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "TODOs"
+        ],
+        "summary": "Soft-delete a TODO",
+        "description": "The TODO is hidden from the default list but retained and can be restored.\nReserved to the TODO's owner: deleting someone else's returns 403.",
+        "operationId": "delete",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/todos": {
+      "get": {
+        "tags": [
+          "TODOs"
+        ],
+        "summary": "List TODOs",
+        "description": "The list is shared: every signed-in user sees every TODO, and each one\ncarries the owner who created it. Filter by status, priority, due-date\nrange, dependency state, name, and owner.\nSort with `sort=<key>,<asc|desc>` using dueDate, priority, status, name,\ncreatedAt, or updatedAt -- priority and status sort in their natural\norder rather than alphabetically. Results are always paged.",
+        "operationId": "list",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "NOT_STARTED",
+                  "IN_PROGRESS",
+                  "COMPLETED",
+                  "ARCHIVED"
+                ]
+              }
+            }
+          },
+          {
+            "name": "priority",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "LOW",
+                  "MEDIUM",
+                  "HIGH"
+                ]
+              }
+            }
+          },
+          {
+            "name": "dueFrom",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "dueTo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "owner",
+            "in": "query",
+            "description": "Restrict to the TODOs created by one user, by user id",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "blocked",
+            "in": "query",
+            "description": "true for TODOs waiting on a dependency, false for ones clear to start",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeDeleted",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "deletedOnly",
+            "in": "query",
+            "description": "Show only soft-deleted TODOs",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "pageable",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Pageable"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedModelTodoResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "TODOs"
+        ],
+        "summary": "Create a TODO",
+        "operationId": "create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTodoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodoResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/todos/{id}/restore": {
+      "post": {
+        "tags": [
+          "TODOs"
+        ],
+        "summary": "Restore a soft-deleted TODO",
+        "description": "Reserved to the TODO's owner, like deleting.",
+        "operationId": "restore",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodoResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/todos/{id}/dependencies": {
+      "post": {
+        "tags": [
+          "TODOs"
+        ],
+        "summary": "Make this TODO depend on another",
+        "description": "Rejected with 409 if the edge would create a dependency cycle.",
+        "operationId": "addDependency",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddDependencyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodoResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/todos/bulk/status": {
+      "post": {
+        "tags": [
+          "TODOs"
+        ],
+        "summary": "Change the status of many TODOs at once",
+        "description": "Best-effort rather than all-or-nothing: every item carries the version\nthe client last saw, and an item that is blocked or has been edited by\nsomeone else is reported in `failed` while the rest still apply. The\ndependency gate is evaluated once for the whole batch, so the outcome\ndoes not depend on the order items appear in.\nRecurring TODOs completed here schedule their next occurrences, which\nare returned in `createdOccurrences`. Capped at PAGE_SIZE_MAX items.",
+        "operationId": "changeStatusInBulk",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/todos/bulk/restore": {
+      "post": {
+        "tags": [
+          "TODOs"
+        ],
+        "summary": "Restore many soft-deleted TODOs at once",
+        "description": "TODOs the caller does not own are reported in `failed` and left alone.",
+        "operationId": "restoreInBulk",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkIdsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/todos/bulk/delete": {
+      "post": {
+        "tags": [
+          "TODOs"
+        ],
+        "summary": "Soft-delete many TODOs at once",
+        "description": "TODOs the caller does not own are reported in `failed` and left alone.",
+        "operationId": "deleteInBulk",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkIdsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Register and sign in",
+        "description": "`password` must be the hex-encoded SHA-256 of the user's password: the\nclient hashes it so the plaintext never crosses the wire. The server\nsalts and hashes that value again before storing it.\nReturns a bearer token, which is shown only here.",
+        "operationId": "register",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Sign out",
+        "description": "Revokes the session behind the supplied token. Other sessions are unaffected.",
+        "operationId": "logout",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Sign in",
+        "description": "Takes the same hex-encoded SHA-256 as registration. Returns a bearer token.",
+        "operationId": "login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/change-password": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Change a password by username",
+        "description": "No re-authentication and no email confirmation: if the username exists,\nits password is replaced outright. `newPassword` must be the hex-encoded\nSHA-256 of the new password, hashed the same way as registration and\nlogin.",
+        "operationId": "changePassword",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/todos/{id}/status": {
+      "patch": {
+        "tags": [
+          "TODOs"
+        ],
+        "summary": "Change a TODO's status",
+        "description": "Moving to IN_PROGRESS fails with 409 while any dependency is unfinished.\nCompleting a recurring TODO also schedules the next occurrence, which is\nreturned alongside the updated TODO.",
+        "operationId": "changeStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusChangeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/todos/revision": {
+      "get": {
+        "tags": [
+          "TODOs"
+        ],
+        "summary": "Fingerprint of the shared list, for change polling",
+        "description": "Returns the newest update timestamp and the row count. Clients poll this\nand refetch only when it differs from what they hold, which keeps an\nidle tab from pulling the list on a timer.",
+        "operationId": "revision",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodoRevisionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "The signed-in user",
+        "description": "Used by the client on start-up to decide whether a stored token is still good.",
+        "operationId": "me",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedUserResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/todos/{id}/dependencies/{dependsOnId}": {
+      "delete": {
+        "tags": [
+          "TODOs"
+        ],
+        "summary": "Remove a dependency edge",
+        "operationId": "removeDependency",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "dependsOnId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodoResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "RecurrenceRequest": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "NONE",
+              "DAILY",
+              "WEEKLY",
+              "MONTHLY",
+              "CUSTOM"
+            ]
+          },
+          "interval": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 365,
+            "minimum": 0
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "UpdateTodoRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 0
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH"
+            ]
+          },
+          "recurrence": {
+            "$ref": "#/components/schemas/RecurrenceRequest"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "name",
+          "priority",
+          "version"
+        ]
+      },
+      "RecurrenceResponse": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "NONE",
+              "DAILY",
+              "WEEKLY",
+              "MONTHLY",
+              "CUSTOM"
+            ]
+          },
+          "interval": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "TodoOwnerResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "username": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          }
+        }
+      },
+      "TodoResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "NOT_STARTED",
+              "IN_PROGRESS",
+              "COMPLETED",
+              "ARCHIVED"
+            ]
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH"
+            ]
+          },
+          "recurrence": {
+            "$ref": "#/components/schemas/RecurrenceResponse"
+          },
+          "recurrenceSourceId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "dependencies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TodoSummaryResponse"
+            }
+          },
+          "owner": {
+            "$ref": "#/components/schemas/TodoOwnerResponse"
+          },
+          "blocked": {
+            "type": "boolean"
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deletedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "TodoSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "NOT_STARTED",
+              "IN_PROGRESS",
+              "COMPLETED",
+              "ARCHIVED"
+            ]
+          },
+          "deleted": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CreateTodoRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 0
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH"
+            ]
+          },
+          "recurrence": {
+            "$ref": "#/components/schemas/RecurrenceRequest"
+          },
+          "dependencyIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "AddDependencyRequest": {
+        "type": "object",
+        "properties": {
+          "dependsOnId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "dependsOnId"
+        ]
+      },
+      "BulkStatusRequest": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "NOT_STARTED",
+              "IN_PROGRESS",
+              "COMPLETED",
+              "ARCHIVED"
+            ]
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BulkTodoRef"
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "items",
+          "status"
+        ]
+      },
+      "BulkTodoRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "id",
+          "version"
+        ]
+      },
+      "BulkFailureResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "type": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          }
+        }
+      },
+      "BulkResultResponse": {
+        "type": "object",
+        "properties": {
+          "requested": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "succeeded": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "failed": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BulkFailureResponse"
+            }
+          },
+          "createdOccurrences": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TodoResponse"
+            }
+          }
+        }
+      },
+      "BulkIdsRequest": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "ids"
+        ]
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 3,
+            "pattern": "^[a-zA-Z0-9._-]+$"
+          },
+          "displayName": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "password",
+          "username"
+        ]
+      },
+      "AuthenticatedUserResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "username": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "SessionResponse": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "user": {
+            "$ref": "#/components/schemas/AuthenticatedUserResponse"
+          }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "minLength": 1
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "password",
+          "username"
+        ]
+      },
+      "ChangePasswordRequest": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "minLength": 1
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "newPassword",
+          "username"
+        ]
+      },
+      "ChangeStatusRequest": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "NOT_STARTED",
+              "IN_PROGRESS",
+              "COMPLETED",
+              "ARCHIVED"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "status",
+          "version"
+        ]
+      },
+      "StatusChangeResponse": {
+        "type": "object",
+        "properties": {
+          "todo": {
+            "$ref": "#/components/schemas/TodoResponse"
+          },
+          "nextOccurrence": {
+            "$ref": "#/components/schemas/TodoResponse"
+          }
+        }
+      },
+      "Pageable": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1
+          },
+          "sort": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "PageMetadata": {
+        "type": "object",
+        "properties": {
+          "size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "number": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "PagedModelTodoResponse": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TodoResponse"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageMetadata"
+          }
+        }
+      },
+      "TodoRevisionResponse": {
+        "type": "object",
+        "properties": {
+          "lastModifiedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      }
+    }
+  }
 }

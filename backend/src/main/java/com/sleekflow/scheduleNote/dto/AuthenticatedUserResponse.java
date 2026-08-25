@@ -2,7 +2,7 @@ package com.sleekflow.scheduleNote.dto;
 
 import java.time.Instant;
 
-import com.sleekflow.scheduleNote.domain.User;
+import com.sleekflow.scheduleNote.entity.User;
 
 public record AuthenticatedUserResponse(Long id, String username, String displayName, Instant createdAt) {
 

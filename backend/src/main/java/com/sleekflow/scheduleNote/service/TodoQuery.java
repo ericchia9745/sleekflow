@@ -3,8 +3,8 @@ package com.sleekflow.scheduleNote.service;
 import java.time.LocalDate;
 import java.util.List;
 
-import com.sleekflow.scheduleNote.domain.TodoPriority;
-import com.sleekflow.scheduleNote.domain.TodoStatus;
+import com.sleekflow.scheduleNote.domain.enums.TodoPriority;
+import com.sleekflow.scheduleNote.domain.enums.TodoStatus;
 
 /**
  * Filters for the TODO list. Every field is optional; a null means "do not

@@ -3,6 +3,11 @@ package com.sleekflow.scheduleNote.service;
 import java.time.LocalDate;
 import java.util.List;
 
+import com.sleekflow.scheduleNote.dto.BulkFailureResponse;
+import com.sleekflow.scheduleNote.dto.BulkIdsRequest;
+import com.sleekflow.scheduleNote.dto.BulkResultResponse;
+import com.sleekflow.scheduleNote.dto.BulkStatusRequest;
+import com.sleekflow.scheduleNote.dto.BulkTodoRef;
 import com.sleekflow.scheduleNote.dto.ChangeStatusRequest;
 import com.sleekflow.scheduleNote.dto.CreateTodoRequest;
 import com.sleekflow.scheduleNote.dto.RecurrenceRequest;
@@ -11,18 +16,19 @@ import com.sleekflow.scheduleNote.dto.TodoResponse;
 import com.sleekflow.scheduleNote.dto.TodoRevisionResponse;
 import com.sleekflow.scheduleNote.dto.TodoSummaryResponse;
 import com.sleekflow.scheduleNote.dto.UpdateTodoRequest;
-import com.sleekflow.scheduleNote.domain.RecurrenceType;
-import com.sleekflow.scheduleNote.domain.TodoPriority;
-import com.sleekflow.scheduleNote.domain.TodoStatus;
-import com.sleekflow.scheduleNote.domain.User;
+import com.sleekflow.scheduleNote.domain.enums.RecurrenceType;
+import com.sleekflow.scheduleNote.domain.enums.TodoPriority;
+import com.sleekflow.scheduleNote.domain.enums.TodoStatus;
+import com.sleekflow.scheduleNote.entity.User;
 import com.sleekflow.scheduleNote.repository.TodoRepository;
 import com.sleekflow.scheduleNote.repository.UserRepository;
 import com.sleekflow.scheduleNote.security.CurrentUser;
-import com.sleekflow.scheduleNote.exception.CircularDependencyException;
-import com.sleekflow.scheduleNote.exception.DependenciesNotSatisfiedException;
-import com.sleekflow.scheduleNote.exception.NotTodoOwnerException;
-import com.sleekflow.scheduleNote.exception.StaleTodoException;
-import com.sleekflow.scheduleNote.exception.TodoNotFoundException;
+import com.sleekflow.scheduleNote.domain.exception.CircularDependencyException;
+import com.sleekflow.scheduleNote.domain.exception.DependenciesNotSatisfiedException;
+import com.sleekflow.scheduleNote.domain.exception.InvalidTodoRequestException;
+import com.sleekflow.scheduleNote.domain.exception.NotTodoOwnerException;
+import com.sleekflow.scheduleNote.domain.exception.StaleTodoException;
+import com.sleekflow.scheduleNote.domain.exception.TodoNotFoundException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -455,6 +461,168 @@ class TodoServiceIntegrationTest {
 
 			assertThat(TodoServiceIntegrationTest.this.service.list(TodoQuery.empty(), PageRequest.of(0, 10_000))
 				.getSize()).isEqualTo(200);
+		}
+
+	}
+
+	@Nested
+	@DisplayName("bulk operations")
+	class BulkOperations {
+
+		private BulkTodoRef ref(TodoResponse todo) {
+			return new BulkTodoRef(todo.id(), todo.version());
+		}
+
+		@Test
+		void appliesOneStatusToManyTodos() {
+			TodoResponse first = create("first");
+			TodoResponse second = create("second");
+
+			BulkResultResponse result = TodoServiceIntegrationTest.this.service.changeStatusInBulk(
+					new BulkStatusRequest(TodoStatus.COMPLETED, List.of(ref(first), ref(second))));
+
+			assertThat(result.succeeded()).containsExactly(first.id(), second.id());
+			assertThat(result.failed()).isEmpty();
+			assertThat(TodoServiceIntegrationTest.this.service.get(first.id()).status())
+				.isEqualTo(TodoStatus.COMPLETED);
+		}
+
+		@Test
+		void appliesTheRestWhenOneItemIsStale() {
+			TodoResponse fresh = create("fresh");
+			TodoResponse edited = create("edited");
+			// Someone else gets there first, moving the version on.
+			complete(edited);
+
+			BulkResultResponse result = TodoServiceIntegrationTest.this.service.changeStatusInBulk(
+					new BulkStatusRequest(TodoStatus.ARCHIVED, List.of(ref(fresh), ref(edited))));
+
+			assertThat(result.succeeded()).containsExactly(fresh.id());
+			assertThat(result.failed()).singleElement()
+				.satisfies((failure) -> {
+					assertThat(failure.id()).isEqualTo(edited.id());
+					assertThat(failure.type()).isEqualTo("stale-version");
+				});
+		}
+
+		@Test
+		void reportsBlockedItemsWithoutStoppingTheBatch() {
+			TodoResponse prerequisite = create("shop");
+			TodoResponse dependent = TodoServiceIntegrationTest.this.service.addDependency(create("bake").id(),
+					prerequisite.id());
+			TodoResponse unrelated = create("tidy");
+
+			BulkResultResponse result = TodoServiceIntegrationTest.this.service
+				.changeStatusInBulk(new BulkStatusRequest(TodoStatus.IN_PROGRESS,
+						List.of(ref(dependent), ref(unrelated))));
+
+			assertThat(result.succeeded()).containsExactly(unrelated.id());
+			assertThat(result.failed()).singleElement()
+				.satisfies((failure) -> {
+					assertThat(failure.id()).isEqualTo(dependent.id());
+					assertThat(failure.type()).isEqualTo("dependencies-not-satisfied");
+					assertThat(failure.detail()).contains("shop");
+				});
+		}
+
+		@Test
+		void judgesEveryItemAgainstTheSameStateWhateverOrderTheyArriveIn() {
+			TodoResponse prerequisite = create("shop");
+			TodoResponse dependent = TodoServiceIntegrationTest.this.service.addDependency(create("bake").id(),
+					prerequisite.id());
+
+			// The gate is answered once for the whole batch, before anything is
+			// applied, so an item's outcome cannot depend on where it sits in the
+			// list. Both prerequisite and dependent are in this batch.
+			BulkResultResponse forwards = TodoServiceIntegrationTest.this.service
+				.changeStatusInBulk(new BulkStatusRequest(TodoStatus.IN_PROGRESS,
+						List.of(ref(prerequisite), ref(dependent))));
+
+			assertThat(forwards.succeeded()).containsExactly(prerequisite.id());
+			assertThat(forwards.failed()).extracting(BulkFailureResponse::id).containsExactly(dependent.id());
+		}
+
+		@Test
+		void schedulesTheNextOccurrenceOfEveryRecurringTodoCompleted() {
+			TodoResponse chore = TodoServiceIntegrationTest.this.service
+				.create(new CreateTodoRequest("water the plants", null, LocalDate.of(2026, 3, 10), TodoPriority.LOW,
+						new RecurrenceRequest(RecurrenceType.WEEKLY, null), List.of()));
+			TodoResponse once = create("one-off");
+
+			BulkResultResponse result = TodoServiceIntegrationTest.this.service.changeStatusInBulk(
+					new BulkStatusRequest(TodoStatus.COMPLETED, List.of(ref(chore), ref(once))));
+
+			assertThat(result.succeeded()).hasSize(2);
+			assertThat(result.createdOccurrences()).singleElement()
+				.satisfies((next) -> {
+					assertThat(next.name()).isEqualTo("water the plants");
+					assertThat(next.dueDate()).isEqualTo(LocalDate.of(2026, 3, 17));
+				});
+		}
+
+		@Test
+		void deletesManyAtOnce() {
+			TodoResponse first = create("first");
+			TodoResponse second = create("second");
+
+			BulkResultResponse result = TodoServiceIntegrationTest.this.service
+				.deleteInBulk(new BulkIdsRequest(List.of(first.id(), second.id())));
+
+			assertThat(result.succeeded()).containsExactly(first.id(), second.id());
+			assertThat(TodoServiceIntegrationTest.this.service.list(TodoQuery.empty(), PageRequest.of(0, 10)))
+				.isEmpty();
+		}
+
+		@Test
+		void leavesOtherPeoplesTodosAloneWhenDeletingInBulk() {
+			TodoResponse mine = create("mine");
+			User other = TodoServiceIntegrationTest.this.users
+				.saveAndFlush(new User("other", "Other", "sha256$x$y"));
+			CurrentUser.set(other);
+			TodoResponse theirs = create("theirs");
+			CurrentUser.set(TodoServiceIntegrationTest.this.currentUser);
+
+			BulkResultResponse result = TodoServiceIntegrationTest.this.service
+				.deleteInBulk(new BulkIdsRequest(List.of(mine.id(), theirs.id())));
+
+			assertThat(result.succeeded()).containsExactly(mine.id());
+			assertThat(result.failed()).singleElement()
+				.satisfies((failure) -> assertThat(failure.type()).isEqualTo("not-todo-owner"));
+			assertThat(TodoServiceIntegrationTest.this.service.get(theirs.id()).deletedAt()).isNull();
+		}
+
+		@Test
+		void restoresManyAtOnce() {
+			TodoResponse first = create("first");
+			TodoResponse second = create("second");
+			TodoServiceIntegrationTest.this.service.deleteInBulk(new BulkIdsRequest(List.of(first.id(),
+					second.id())));
+
+			BulkResultResponse result = TodoServiceIntegrationTest.this.service
+				.restoreInBulk(new BulkIdsRequest(List.of(first.id(), second.id())));
+
+			assertThat(result.succeeded()).containsExactly(first.id(), second.id());
+			assertThat(TodoServiceIntegrationTest.this.service.list(TodoQuery.empty(), PageRequest.of(0, 10)))
+				.hasSize(2);
+		}
+
+		@Test
+		void reportsIdsThatAreNotOnTheListAnyMore() {
+			BulkResultResponse result = TodoServiceIntegrationTest.this.service
+				.deleteInBulk(new BulkIdsRequest(List.of(9999L)));
+
+			assertThat(result.succeeded()).isEmpty();
+			assertThat(result.failed()).singleElement()
+				.satisfies((failure) -> assertThat(failure.type()).isEqualTo("todo-not-found"));
+		}
+
+		@Test
+		void refusesABatchLargerThanAPage() {
+			List<Long> tooMany = java.util.stream.LongStream.rangeClosed(1, 201).boxed().toList();
+
+			assertThatExceptionOfType(InvalidTodoRequestException.class)
+				.isThrownBy(() -> TodoServiceIntegrationTest.this.service
+					.deleteInBulk(new BulkIdsRequest(tooMany)));
 		}
 
 	}

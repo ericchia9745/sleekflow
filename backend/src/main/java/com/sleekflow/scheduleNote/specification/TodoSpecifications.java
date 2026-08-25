@@ -3,9 +3,9 @@ package com.sleekflow.scheduleNote.specification;
 import java.time.LocalDate;
 import java.util.Collection;
 
-import com.sleekflow.scheduleNote.domain.Todo;
-import com.sleekflow.scheduleNote.domain.TodoPriority;
-import com.sleekflow.scheduleNote.domain.TodoStatus;
+import com.sleekflow.scheduleNote.entity.Todo;
+import com.sleekflow.scheduleNote.domain.enums.TodoPriority;
+import com.sleekflow.scheduleNote.domain.enums.TodoStatus;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;

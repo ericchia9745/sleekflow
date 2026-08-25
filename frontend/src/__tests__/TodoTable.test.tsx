@@ -37,10 +37,13 @@ function renderTable(todos: Todo[]) {
       <TodoTable
         todos={todos}
         currentUserId={ME}
+        selectedIds={new Set()}
         expandedId={null}
         sortKey="dueDate"
         sortDirection="asc"
         busyId={null}
+        onToggleSelect={vi.fn()}
+        onToggleSelectPage={vi.fn()}
         onSort={vi.fn()}
         onToggleExpand={vi.fn()}
         onStatusChange={vi.fn()}
@@ -140,10 +143,13 @@ describe('TodoTable', () => {
           <TodoTable
             todos={[todo({ dependencies: [1, 2, 3].map((id) => dependency({ id, name: `task ${id}` })) })]}
             currentUserId={ME}
+            selectedIds={new Set()}
             expandedId={null}
             sortKey="dueDate"
             sortDirection="asc"
             busyId={null}
+            onToggleSelect={vi.fn()}
+            onToggleSelectPage={vi.fn()}
             onSort={vi.fn()}
             onToggleExpand={onToggleExpand}
             onStatusChange={vi.fn()}
@@ -193,6 +199,39 @@ describe('TodoTable', () => {
       renderTable([todo()])
       const row = screen.getByText('bake bread').closest('tr')!
       expect(within(row).getByRole('button', { name: 'Delete' })).toBeEnabled()
+    })
+  })
+
+  describe('selection', () => {
+    it('offers a checkbox per row for building a batch', () => {
+      renderTable([todo()])
+      expect(screen.getByLabelText('Select bake bread')).not.toBeChecked()
+    })
+
+    it('shows the page checkbox as checked once every row on it is selected', () => {
+      const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      render(
+        <QueryClientProvider client={client}>
+          <TodoTable
+            todos={[todo()]}
+            currentUserId={ME}
+            selectedIds={new Set([1])}
+            expandedId={null}
+            sortKey="dueDate"
+            sortDirection="asc"
+            busyId={null}
+            onToggleSelect={vi.fn()}
+            onToggleSelectPage={vi.fn()}
+            onSort={vi.fn()}
+            onToggleExpand={vi.fn()}
+            onStatusChange={vi.fn()}
+            onEdit={vi.fn()}
+            onDelete={vi.fn()}
+            onRestore={vi.fn()}
+          />
+        </QueryClientProvider>,
+      )
+      expect(screen.getByLabelText('Select every TODO on this page')).toBeChecked()
     })
   })
 

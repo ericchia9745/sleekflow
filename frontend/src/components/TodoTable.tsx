@@ -8,10 +8,14 @@ interface Props {
   todos: Todo[]
   /** The list is shared; this decides whose rows offer Delete and Restore. */
   currentUserId: number
+  selectedIds: ReadonlySet<number>
   expandedId: number | null
   sortKey: SortKey
   sortDirection: SortDirection
   busyId: number | null
+  onToggleSelect: (id: number) => void
+  /** Select or clear every TODO on the page currently shown. */
+  onToggleSelectPage: (select: boolean) => void
   onSort: (key: SortKey) => void
   onToggleExpand: (id: number) => void
   onStatusChange: (todo: Todo, status: TodoStatus) => void
@@ -67,7 +71,8 @@ function overdue(todo: Todo): boolean {
 }
 
 export function TodoTable(props: Props) {
-  const { todos, sortKey, sortDirection, onSort } = props
+  const { todos, selectedIds, sortKey, sortDirection, onSort } = props
+  const allOnPageSelected = todos.length > 0 && todos.every((todo) => selectedIds.has(todo.id))
 
   if (todos.length === 0) {
     return <p className="empty">No TODOs match these filters.</p>
@@ -77,6 +82,14 @@ export function TodoTable(props: Props) {
     <table className="todo-table">
       <thead>
         <tr>
+          <th>
+            <input
+              type="checkbox"
+              aria-label="Select every TODO on this page"
+              checked={allOnPageSelected}
+              onChange={(e) => props.onToggleSelectPage(e.target.checked)}
+            />
+          </th>
           <th aria-label="Expand" />
           {COLUMNS.map((column) => (
             <th key={column.key}>
@@ -101,6 +114,14 @@ export function TodoTable(props: Props) {
           return (
             <Fragment key={todo.id}>
               <tr className={todo.deletedAt ? 'deleted' : undefined}>
+                <td>
+                  <input
+                    type="checkbox"
+                    aria-label={`Select ${todo.name}`}
+                    checked={selectedIds.has(todo.id)}
+                    onChange={() => props.onToggleSelect(todo.id)}
+                  />
+                </td>
                 <td>
                   <button
                     type="button"
@@ -206,7 +227,7 @@ export function TodoTable(props: Props) {
               </tr>
               {expanded && (
                 <tr className="detail-row">
-                  <td colSpan={10}>
+                  <td colSpan={11}>
                     <DependencyPanel todo={todo} />
                   </td>
                 </tr>

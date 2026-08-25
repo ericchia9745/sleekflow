@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { describeError } from '../api/todos'
-import type { ProblemDetail } from '../types'
+import { describeBulkResult, describeError } from '../api/todos'
+import type { BulkResult, ProblemDetail, Todo } from '../types'
 
 function asAxiosError(problem: ProblemDetail) {
   return { response: { data: problem } }
@@ -58,5 +58,55 @@ describe('describeError', () => {
 
   it('never returns an empty string for an unknown throwable', () => {
     expect(describeError({})).toBeTruthy()
+  })
+})
+
+describe('describeBulkResult', () => {
+  function result(overrides: Partial<BulkResult> = {}): BulkResult {
+    return { requested: 3, succeeded: [1, 2, 3], failed: [], createdOccurrences: [], ...overrides }
+  }
+
+  it('reports a clean batch as a plain count', () => {
+    expect(describeBulkResult('completed', result())).toBe('3 of 3 completed.')
+  })
+
+  it('groups the reasons items were skipped rather than listing each one', () => {
+    const message = describeBulkResult(
+      'updated',
+      result({
+        succeeded: [1],
+        failed: [
+          { id: 2, type: 'dependencies-not-satisfied', detail: 'Still waiting on: shop.' },
+          { id: 3, type: 'dependencies-not-satisfied', detail: 'Still waiting on: prep.' },
+        ],
+      }),
+    )
+
+    expect(message).toBe('1 of 3 updated. Skipped: 2 still blocked.')
+  })
+
+  it('distinguishes a conflict from a permission problem', () => {
+    const message = describeBulkResult(
+      'deleted',
+      result({
+        succeeded: [1],
+        failed: [
+          { id: 2, type: 'stale-version', detail: 'Someone else changed this TODO first.' },
+          { id: 3, type: 'not-todo-owner', detail: 'TODO 3 belongs to someone else.' },
+        ],
+      }),
+    )
+
+    expect(message).toContain('1 changed by someone else')
+    expect(message).toContain('1 owned by someone else')
+  })
+
+  it('mentions occurrences a batch of completions scheduled', () => {
+    const message = describeBulkResult(
+      'completed',
+      result({ createdOccurrences: [{ id: 9, name: 'water the plants' } as Todo] }),
+    )
+
+    expect(message).toContain('1 next occurrence(s) scheduled')
   })
 })

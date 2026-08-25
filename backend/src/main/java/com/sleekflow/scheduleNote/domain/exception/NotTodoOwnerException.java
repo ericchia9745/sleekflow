@@ -1,4 +1,4 @@
-package com.sleekflow.scheduleNote.exception;
+package com.sleekflow.scheduleNote.domain.exception;
 
 /**
  * Raised when someone tries to delete or restore a TODO they did not create.

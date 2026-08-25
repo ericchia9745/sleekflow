@@ -10,6 +10,11 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 
+import com.sleekflow.scheduleNote.dto.BulkFailureResponse;
+import com.sleekflow.scheduleNote.dto.BulkIdsRequest;
+import com.sleekflow.scheduleNote.dto.BulkResultResponse;
+import com.sleekflow.scheduleNote.dto.BulkStatusRequest;
+import com.sleekflow.scheduleNote.dto.BulkTodoRef;
 import com.sleekflow.scheduleNote.dto.ChangeStatusRequest;
 import com.sleekflow.scheduleNote.dto.CreateTodoRequest;
 import com.sleekflow.scheduleNote.dto.RecurrenceRequest;
@@ -19,19 +24,19 @@ import com.sleekflow.scheduleNote.dto.TodoResponse;
 import com.sleekflow.scheduleNote.dto.TodoRevisionResponse;
 import com.sleekflow.scheduleNote.dto.UpdateTodoRequest;
 import com.sleekflow.scheduleNote.config.AppProperties;
-import com.sleekflow.scheduleNote.domain.Recurrence;
-import com.sleekflow.scheduleNote.domain.Todo;
-import com.sleekflow.scheduleNote.domain.TodoStatus;
-import com.sleekflow.scheduleNote.domain.User;
+import com.sleekflow.scheduleNote.entity.Recurrence;
+import com.sleekflow.scheduleNote.entity.Todo;
+import com.sleekflow.scheduleNote.domain.enums.TodoStatus;
+import com.sleekflow.scheduleNote.entity.User;
 import com.sleekflow.scheduleNote.repository.TodoRepository;
 import com.sleekflow.scheduleNote.repository.UserRepository;
 import com.sleekflow.scheduleNote.specification.TodoSpecifications;
-import com.sleekflow.scheduleNote.exception.CircularDependencyException;
-import com.sleekflow.scheduleNote.exception.DependenciesNotSatisfiedException;
-import com.sleekflow.scheduleNote.exception.InvalidTodoRequestException;
-import com.sleekflow.scheduleNote.exception.NotTodoOwnerException;
-import com.sleekflow.scheduleNote.exception.StaleTodoException;
-import com.sleekflow.scheduleNote.exception.TodoNotFoundException;
+import com.sleekflow.scheduleNote.domain.exception.CircularDependencyException;
+import com.sleekflow.scheduleNote.domain.exception.DependenciesNotSatisfiedException;
+import com.sleekflow.scheduleNote.domain.exception.InvalidTodoRequestException;
+import com.sleekflow.scheduleNote.domain.exception.NotTodoOwnerException;
+import com.sleekflow.scheduleNote.domain.exception.StaleTodoException;
+import com.sleekflow.scheduleNote.domain.exception.TodoNotFoundException;
 import com.sleekflow.scheduleNote.security.CurrentUser;
 
 import org.springframework.data.domain.Page;
@@ -155,6 +160,132 @@ public class TodoService {
 		requireOwner(todo, "restored");
 		todo.restore();
 		return respond(todo);
+	}
+
+	// --- Bulk -------------------------------------------------------------
+
+	/**
+	 * Applies one status to many TODOs.
+	 * <p>
+	 * Best-effort, not all-or-nothing: a TODO that is blocked, or that someone
+	 * else has edited since the client last read it, is an expected outcome for
+	 * that row rather than a reason to throw away the rest of the batch. Each
+	 * such row comes back in {@code failed} carrying the same problem type its
+	 * single-item endpoint would have returned.
+	 * <p>
+	 * The dependency gate is evaluated for the whole batch up front, in one
+	 * query. Deciding row by row would make the result depend on the order the
+	 * batch happened to be applied in -- completing a dependency and starting
+	 * its dependent in the same request would succeed or fail according to which
+	 * came first in the list. Answering the question once, against the state the
+	 * caller saw, is the only version of this that is reproducible.
+	 */
+	public BulkResultResponse changeStatusInBulk(BulkStatusRequest request) {
+		List<BulkTodoRef> items = request.items();
+		requireWithinBatchLimit(items.size());
+		Map<Long, Todo> byId = activeByIdAmong(items.stream().map(BulkTodoRef::id).toList());
+		Set<Long> blockedIds = (request.status() == TodoStatus.IN_PROGRESS)
+				? this.repository.findBlockedIdsAmong(byId.keySet()) : Set.of();
+
+		List<Long> succeeded = new ArrayList<>();
+		List<BulkFailureResponse> failed = new ArrayList<>();
+		List<Todo> createdOccurrences = new ArrayList<>();
+
+		for (BulkTodoRef item : items) {
+			Todo todo = byId.get(item.id());
+			if (todo == null) {
+				failed.add(notFound(item.id()));
+				continue;
+			}
+			if (!Objects.equals(todo.getVersion(), item.version())) {
+				failed.add(new BulkFailureResponse(item.id(), "stale-version",
+						"Someone else changed this TODO first (you had version %d, it is now %d)."
+							.formatted(item.version(), todo.getVersion())));
+				continue;
+			}
+			if (blockedIds.contains(item.id())) {
+				failed.add(new BulkFailureResponse(item.id(), "dependencies-not-satisfied",
+						"Still waiting on: %s.".formatted(String.join(", ", outstandingDependencyNames(todo)))));
+				continue;
+			}
+			boolean newlyCompleted = request.status() == TodoStatus.COMPLETED
+					&& todo.getStatus() != TodoStatus.COMPLETED;
+			todo.moveTo(request.status());
+			if (newlyCompleted && todo.getRecurrence().recurs()) {
+				createdOccurrences.add(this.repository.save(todo.nextOccurrence()));
+			}
+			succeeded.add(item.id());
+		}
+
+		this.repository.flush();
+		Map<Long, TodoOwnerResponse> owners = ownersOf(createdOccurrences);
+		return new BulkResultResponse(items.size(), succeeded, failed, createdOccurrences.stream()
+			.map((todo) -> TodoResponse.of(todo, ownerOf(todo, owners), todo.isBlocked()))
+			.toList());
+	}
+
+	/** Soft-deletes many TODOs, skipping any the caller does not own. */
+	public BulkResultResponse deleteInBulk(BulkIdsRequest request) {
+		requireWithinBatchLimit(request.ids().size());
+		return applyToOwned(request.ids(), activeByIdAmong(request.ids()), "deleted", Todo::softDelete);
+	}
+
+	/** Restores many soft-deleted TODOs, skipping any the caller does not own. */
+	public BulkResultResponse restoreInBulk(BulkIdsRequest request) {
+		requireWithinBatchLimit(request.ids().size());
+		return applyToOwned(request.ids(), byIdAmong(request.ids()), "restored", Todo::restore);
+	}
+
+	private BulkResultResponse applyToOwned(List<Long> ids, Map<Long, Todo> byId, String action,
+			java.util.function.Consumer<Todo> change) {
+		List<Long> succeeded = new ArrayList<>();
+		List<BulkFailureResponse> failed = new ArrayList<>();
+		for (Long id : ids) {
+			Todo todo = byId.get(id);
+			if (todo == null) {
+				failed.add(notFound(id));
+			}
+			else if (!Objects.equals(todo.getUserId(), currentUserId())) {
+				failed.add(new BulkFailureResponse(id, "not-todo-owner",
+						new NotTodoOwnerException(id, action).getMessage()));
+			}
+			else {
+				change.accept(todo);
+				succeeded.add(id);
+			}
+		}
+		this.repository.flush();
+		return new BulkResultResponse(ids.size(), succeeded, failed, List.of());
+	}
+
+	private static BulkFailureResponse notFound(Long id) {
+		return new BulkFailureResponse(id, "todo-not-found",
+				"TODO %d is not on the list any more.".formatted(id));
+	}
+
+	/**
+	 * A batch is capped at the same size as a page, so a client can always act on
+	 * exactly what it has on screen and never on more than it has seen.
+	 */
+	private void requireWithinBatchLimit(int size) {
+		int max = this.properties.pagination().maxPageSize();
+		if (size > max) {
+			throw new InvalidTodoRequestException(
+					"A bulk request can carry at most %d TODOs; this one carried %d.".formatted(max, size));
+		}
+	}
+
+	private Map<Long, Todo> byIdAmong(Collection<Long> ids) {
+		return this.repository.findAllById(new LinkedHashSet<>(ids))
+			.stream()
+			.collect(java.util.stream.Collectors.toMap(Todo::getId, Function.identity()));
+	}
+
+	private Map<Long, Todo> activeByIdAmong(Collection<Long> ids) {
+		return this.repository.findAllById(new LinkedHashSet<>(ids))
+			.stream()
+			.filter((todo) -> !todo.isDeleted())
+			.collect(java.util.stream.Collectors.toMap(Todo::getId, Function.identity()));
 	}
 
 	// --- Dependencies -----------------------------------------------------

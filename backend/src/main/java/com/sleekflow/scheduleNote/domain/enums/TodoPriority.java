@@ -1,4 +1,4 @@
-package com.sleekflow.scheduleNote.domain;
+package com.sleekflow.scheduleNote.domain.enums;
 
 public enum TodoPriority {
 

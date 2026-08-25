@@ -1,15 +1,15 @@
 package com.sleekflow.scheduleNote.service;
 
 import com.sleekflow.scheduleNote.ClientPasswordHash;
-import com.sleekflow.scheduleNote.domain.UserSession;
+import com.sleekflow.scheduleNote.entity.UserSession;
 import com.sleekflow.scheduleNote.dto.ChangePasswordRequest;
 import com.sleekflow.scheduleNote.dto.LoginRequest;
 import com.sleekflow.scheduleNote.dto.RegisterRequest;
 import com.sleekflow.scheduleNote.dto.SessionResponse;
-import com.sleekflow.scheduleNote.exception.AuthenticationFailedException;
-import com.sleekflow.scheduleNote.exception.UnauthenticatedException;
-import com.sleekflow.scheduleNote.exception.UserNotFoundException;
-import com.sleekflow.scheduleNote.exception.UsernameTakenException;
+import com.sleekflow.scheduleNote.domain.exception.AuthenticationFailedException;
+import com.sleekflow.scheduleNote.domain.exception.UnauthenticatedException;
+import com.sleekflow.scheduleNote.domain.exception.UserNotFoundException;
+import com.sleekflow.scheduleNote.domain.exception.UsernameTakenException;
 import com.sleekflow.scheduleNote.repository.UserRepository;
 import com.sleekflow.scheduleNote.repository.UserSessionRepository;
 import org.junit.jupiter.api.BeforeEach;

@@ -56,6 +56,20 @@ export interface PagedResponse<T> {
   page: { size: number; number: number; totalElements: number; totalPages: number }
 }
 
+/** One item a bulk operation could not apply, with the reason as a stable code. */
+export interface BulkFailure {
+  id: number
+  type: 'stale-version' | 'dependencies-not-satisfied' | 'not-todo-owner' | 'todo-not-found'
+  detail: string
+}
+
+export interface BulkResult {
+  requested: number
+  succeeded: number[]
+  failed: BulkFailure[]
+  createdOccurrences: Todo[]
+}
+
 export interface StatusChangeResult {
   todo: Todo
   nextOccurrence: Todo | null

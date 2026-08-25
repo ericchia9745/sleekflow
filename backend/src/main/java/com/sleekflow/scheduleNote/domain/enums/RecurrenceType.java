@@ -1,4 +1,4 @@
-package com.sleekflow.scheduleNote.domain;
+package com.sleekflow.scheduleNote.domain.enums;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -31,7 +31,7 @@ public enum RecurrenceType {
 		return this == CUSTOM;
 	}
 
-	LocalDate advance(LocalDate from, int interval) {
+	public LocalDate advance(LocalDate from, int interval) {
 		if (this.unit == null) {
 			throw new IllegalStateException("%s does not recur".formatted(this));
 		}

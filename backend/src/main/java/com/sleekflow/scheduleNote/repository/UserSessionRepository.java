@@ -4,8 +4,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
-import com.sleekflow.scheduleNote.domain.User;
-import com.sleekflow.scheduleNote.domain.UserSession;
+import com.sleekflow.scheduleNote.entity.User;
+import com.sleekflow.scheduleNote.entity.UserSession;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;

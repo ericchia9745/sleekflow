@@ -2,6 +2,12 @@ package com.sleekflow.scheduleNote.domain;
 
 import java.time.LocalDate;
 
+import com.sleekflow.scheduleNote.domain.enums.RecurrenceType;
+import com.sleekflow.scheduleNote.domain.enums.TodoPriority;
+import com.sleekflow.scheduleNote.domain.enums.TodoStatus;
+import com.sleekflow.scheduleNote.entity.Recurrence;
+import com.sleekflow.scheduleNote.entity.Todo;
+
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

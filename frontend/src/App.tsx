@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react'
 
 import { setUnauthorizedHandler } from './api/client'
-import { describeError } from './api/todos'
+import { describeBulkResult, describeError } from './api/todos'
 import { useAuth } from './auth/AuthContext'
 import { AuthScreen } from './components/AuthScreen'
 import type { TodoPayload } from './api/todos'
+import { BulkActionBar } from './components/BulkActionBar'
 import { FilterBar } from './components/FilterBar'
 import { TodoForm } from './components/TodoForm'
 import { TodoTable } from './components/TodoTable'
 import {
+  useBulkChangeStatus,
+  useBulkDelete,
+  useBulkRestore,
   useChangeStatus,
   useCreateTodo,
   useDeleteTodo,
@@ -51,6 +55,9 @@ function TodoWorkspace() {
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const [message, setMessage] = useState<{ tone: 'error' | 'info'; text: string } | null>(null)
   const [busyId, setBusyId] = useState<number | null>(null)
+  // Held as ids rather than TODOs so a selection survives paging, filtering and
+  // a refetch triggered by somebody else's edit.
+  const [selectedIds, setSelectedIds] = useState<ReadonlySet<number>>(new Set())
 
   const { announceChange, lastCheckedAt } = useRealtimeSync(true)
   const list = useTodoList({ ...filters, page, size: PAGE_SIZE, sortKey, sortDirection })
@@ -59,9 +66,47 @@ function TodoWorkspace() {
   const changeStatus = useChangeStatus()
   const remove = useDeleteTodo()
   const restore = useRestoreTodo()
+  const bulkStatus = useBulkChangeStatus()
+  const bulkDelete = useBulkDelete()
+  const bulkRestore = useBulkRestore()
 
   const todos = list.data?.content ?? []
   const pageInfo = list.data?.page
+  const selectedOnPage = todos.filter((todo) => selectedIds.has(todo.id))
+  const bulkBusy = bulkStatus.isPending || bulkDelete.isPending || bulkRestore.isPending
+
+  function toggleSelected(id: number) {
+    const next = new Set(selectedIds)
+    if (!next.delete(id)) next.add(id)
+    setSelectedIds(next)
+  }
+
+  function toggleSelectedPage(select: boolean) {
+    const next = new Set(selectedIds)
+    for (const todo of todos) {
+      if (select) next.add(todo.id)
+      else next.delete(todo.id)
+    }
+    setSelectedIds(next)
+  }
+
+  /** Runs a batch, reports it in one line, and drops the ids that were applied. */
+  async function runBulk(verb: string, action: () => Promise<import('./types').BulkResult>) {
+    setMessage(null)
+    try {
+      const result = await action()
+      announceChange()
+      setMessage({
+        tone: result.failed.length ? 'error' : 'info',
+        text: describeBulkResult(verb, result),
+      })
+      const next = new Set(selectedIds)
+      for (const id of result.succeeded) next.delete(id)
+      setSelectedIds(next)
+    } catch (error) {
+      setMessage({ tone: 'error', text: describeError(error) })
+    }
+  }
 
   function applyFilters(next: TodoFilters) {
     setFilters(next)
@@ -196,15 +241,37 @@ function TodoWorkspace() {
         onReset={() => applyFilters(EMPTY_FILTERS)}
       />
 
+      <BulkActionBar
+        selected={selectedOnPage}
+        selectedCount={selectedIds.size}
+        busy={bulkBusy}
+        onChangeStatus={(status) =>
+          void runBulk(
+            'updated',
+            () =>
+              bulkStatus.mutateAsync({
+                status,
+                items: selectedOnPage.map((todo) => ({ id: todo.id, version: todo.version })),
+              }),
+          )
+        }
+        onDelete={() => void runBulk('deleted', () => bulkDelete.mutateAsync(selectedOnPage.map((t) => t.id)))}
+        onRestore={() => void runBulk('restored', () => bulkRestore.mutateAsync(selectedOnPage.map((t) => t.id)))}
+        onClear={() => setSelectedIds(new Set())}
+      />
+
       {list.isError && <p className="banner error">{describeError(list.error)}</p>}
 
       <TodoTable
         todos={todos}
         currentUserId={user?.id ?? 0}
+        selectedIds={selectedIds}
         expandedId={expandedId}
         sortKey={sortKey}
         sortDirection={sortDirection}
         busyId={busyId}
+        onToggleSelect={toggleSelected}
+        onToggleSelectPage={toggleSelectedPage}
         onSort={sortBy}
         onToggleExpand={(id) => setExpandedId(expandedId === id ? null : id)}
         onStatusChange={moveTo}

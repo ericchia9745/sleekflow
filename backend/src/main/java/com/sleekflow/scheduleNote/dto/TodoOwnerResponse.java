@@ -1,6 +1,6 @@
 package com.sleekflow.scheduleNote.dto;
 
-import com.sleekflow.scheduleNote.domain.User;
+import com.sleekflow.scheduleNote.entity.User;
 
 /**
  * Who created a TODO, on a shared list.

@@ -1,4 +1,4 @@
-package com.sleekflow.scheduleNote.exception;
+package com.sleekflow.scheduleNote.domain.exception;
 
 /**
  * Raised for any failed sign-in. The message is deliberately the same whether

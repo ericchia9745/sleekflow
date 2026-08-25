@@ -3,16 +3,16 @@ package com.sleekflow.scheduleNote.api;
 import java.util.List;
 import java.util.Map;
 
-import com.sleekflow.scheduleNote.exception.AuthenticationFailedException;
-import com.sleekflow.scheduleNote.exception.CircularDependencyException;
-import com.sleekflow.scheduleNote.exception.DependenciesNotSatisfiedException;
-import com.sleekflow.scheduleNote.exception.InvalidTodoRequestException;
-import com.sleekflow.scheduleNote.exception.NotTodoOwnerException;
-import com.sleekflow.scheduleNote.exception.StaleTodoException;
-import com.sleekflow.scheduleNote.exception.TodoNotFoundException;
-import com.sleekflow.scheduleNote.exception.UnauthenticatedException;
-import com.sleekflow.scheduleNote.exception.UserNotFoundException;
-import com.sleekflow.scheduleNote.exception.UsernameTakenException;
+import com.sleekflow.scheduleNote.domain.exception.AuthenticationFailedException;
+import com.sleekflow.scheduleNote.domain.exception.CircularDependencyException;
+import com.sleekflow.scheduleNote.domain.exception.DependenciesNotSatisfiedException;
+import com.sleekflow.scheduleNote.domain.exception.InvalidTodoRequestException;
+import com.sleekflow.scheduleNote.domain.exception.NotTodoOwnerException;
+import com.sleekflow.scheduleNote.domain.exception.StaleTodoException;
+import com.sleekflow.scheduleNote.domain.exception.TodoNotFoundException;
+import com.sleekflow.scheduleNote.domain.exception.UnauthenticatedException;
+import com.sleekflow.scheduleNote.domain.exception.UserNotFoundException;
+import com.sleekflow.scheduleNote.domain.exception.UsernameTakenException;
 
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;

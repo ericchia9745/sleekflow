@@ -15,14 +15,21 @@ if [ ! -x "$MYSQL_BIN" ]; then
 fi
 
 # Every TODO records the user who created it, so seeding needs at least one
-# account to own the demo set. This reproduces Sha256PasswordHasher's own format
-# (sha256$<salt>$<digest>, digest = sha256(salt + "$" + password)) so the
-# account can actually be logged into afterwards; the salt is fixed rather
-# than random purely so re-running this script is idempotent.
+# account to own the demo set.
+#
+# Reproducing a stored hash takes both hashing steps, in order, or the account
+# cannot be signed into:
+#   1. the browser sends sha256(plaintext), hex -- never the plaintext itself;
+#   2. the server stores sha256(salt + "$" + <that digest>), as
+#      sha256$<salt>$<digest>, per Sha256PasswordHasher.
+# Salting the plaintext directly here would produce a hash that no password can
+# ever match, because the server never sees a plaintext to compare.
+# The salts are fixed rather than random purely so re-running this is idempotent.
 DEMO_USERNAME="demo"
 DEMO_PASSWORD="demo12345"
 DEMO_SALT="seed0000demo0000"
-DEMO_DIGEST=$(printf '%s$%s' "$DEMO_SALT" "$DEMO_PASSWORD" | openssl dgst -sha256 -r | awk '{print $1}')
+DEMO_CLIENT_DIGEST=$(printf '%s' "$DEMO_PASSWORD" | openssl dgst -sha256 -r | awk '{print $1}')
+DEMO_DIGEST=$(printf '%s$%s' "$DEMO_SALT" "$DEMO_CLIENT_DIGEST" | openssl dgst -sha256 -r | awk '{print $1}')
 DEMO_HASH="sha256\$${DEMO_SALT}\$${DEMO_DIGEST}"
 
 # A second account with a couple of todos of its own. The list is shared, so
@@ -31,7 +38,8 @@ DEMO_HASH="sha256\$${DEMO_SALT}\$${DEMO_DIGEST}"
 OTHER_USERNAME="demo2"
 OTHER_PASSWORD="demo12345"
 OTHER_SALT="seed0001demo0001"
-OTHER_DIGEST=$(printf '%s$%s' "$OTHER_SALT" "$OTHER_PASSWORD" | openssl dgst -sha256 -r | awk '{print $1}')
+OTHER_CLIENT_DIGEST=$(printf '%s' "$OTHER_PASSWORD" | openssl dgst -sha256 -r | awk '{print $1}')
+OTHER_DIGEST=$(printf '%s$%s' "$OTHER_SALT" "$OTHER_CLIENT_DIGEST" | openssl dgst -sha256 -r | awk '{print $1}')
 OTHER_HASH="sha256\$${OTHER_SALT}\$${OTHER_DIGEST}"
 
 echo "Seeding ${DB_NAME} on ${DB_HOST}:${DB_PORT} (${BULK} generated rows)…"
