@@ -6,6 +6,8 @@ import { DependencyPanel } from './DependencyPanel'
 
 interface Props {
   todos: Todo[]
+  /** The list is shared; this decides whose rows offer Delete and Restore. */
+  currentUserId: number
   expandedId: number | null
   sortKey: SortKey
   sortDirection: SortDirection
@@ -24,6 +26,12 @@ const COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'priority', label: 'Priority' },
   { key: 'dueDate', label: 'Due' },
 ]
+
+/**
+ * Anyone may edit anything on the shared list, but only the owner may take a
+ * TODO off it -- so Delete and Restore are the two buttons that go dim.
+ */
+const OWNER_ONLY = 'Only the owner can delete or restore this TODO. You can still edit it.'
 
 /** How many dependency names to show before collapsing the rest into a count. */
 const DEPENDENCIES_SHOWN = 2
@@ -78,6 +86,7 @@ export function TodoTable(props: Props) {
               </button>
             </th>
           ))}
+          <th>Owner</th>
           <th>Repeats</th>
           <th>Depends on</th>
           <th>Blocked</th>
@@ -88,6 +97,7 @@ export function TodoTable(props: Props) {
         {todos.map((todo) => {
           const expanded = props.expandedId === todo.id
           const busy = props.busyId === todo.id
+          const mine = todo.owner.id === props.currentUserId
           return (
             <Fragment key={todo.id}>
               <tr className={todo.deletedAt ? 'deleted' : undefined}>
@@ -120,6 +130,15 @@ export function TodoTable(props: Props) {
                 <td><span className={`priority priority-${todo.priority.toLowerCase()}`}>{todo.priority}</span></td>
                 <td className={overdue(todo) ? 'overdue' : undefined}>
                   {todo.dueDate ?? <span className="muted">—</span>}
+                </td>
+                <td>
+                  {mine ? (
+                    <span className="owner owner-me" title="Created by you">you</span>
+                  ) : (
+                    <span className="owner" title={todo.owner.username ?? 'Account removed'}>
+                      {todo.owner.displayName}
+                    </span>
+                  )}
                 </td>
                 <td>
                   {todo.recurrence.type === 'NONE'
@@ -161,18 +180,33 @@ export function TodoTable(props: Props) {
                 </td>
                 <td className="actions-cell">
                   {todo.deletedAt ? (
-                    <button type="button" onClick={() => props.onRestore(todo)}>Restore</button>
+                    <button
+                      type="button"
+                      disabled={!mine}
+                      title={mine ? undefined : OWNER_ONLY}
+                      onClick={() => props.onRestore(todo)}
+                    >
+                      Restore
+                    </button>
                   ) : (
                     <>
                       <button type="button" onClick={() => props.onEdit(todo)}>Edit</button>
-                      <button type="button" className="danger" onClick={() => props.onDelete(todo)}>Delete</button>
+                      <button
+                        type="button"
+                        className="danger"
+                        disabled={!mine}
+                        title={mine ? undefined : OWNER_ONLY}
+                        onClick={() => props.onDelete(todo)}
+                      >
+                        Delete
+                      </button>
                     </>
                   )}
                 </td>
               </tr>
               {expanded && (
                 <tr className="detail-row">
-                  <td colSpan={9}>
+                  <td colSpan={10}>
                     <DependencyPanel todo={todo} />
                   </td>
                 </tr>

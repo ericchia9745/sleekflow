@@ -5,6 +5,9 @@ import { describe, expect, it, vi } from 'vitest'
 import { TodoTable } from '../components/TodoTable'
 import type { Todo, TodoSummary } from '../types'
 
+/** The signed-in user in these tests; anything else is someone else's TODO. */
+const ME = 7
+
 function todo(overrides: Partial<Todo> = {}): Todo {
   return {
     id: 1,
@@ -16,6 +19,7 @@ function todo(overrides: Partial<Todo> = {}): Todo {
     recurrence: { type: 'NONE', interval: null },
     recurrenceSourceId: null,
     dependencies: [],
+    owner: { id: ME, username: 'eric', displayName: 'Eric' },
     blocked: false,
     completedAt: null,
     deletedAt: null,
@@ -32,6 +36,7 @@ function renderTable(todos: Todo[]) {
     <QueryClientProvider client={client}>
       <TodoTable
         todos={todos}
+        currentUserId={ME}
         expandedId={null}
         sortKey="dueDate"
         sortDirection="asc"
@@ -134,6 +139,7 @@ describe('TodoTable', () => {
         <QueryClientProvider client={client}>
           <TodoTable
             todos={[todo({ dependencies: [1, 2, 3].map((id) => dependency({ id, name: `task ${id}` })) })]}
+            currentUserId={ME}
             expandedId={null}
             sortKey="dueDate"
             sortDirection="asc"
@@ -155,6 +161,38 @@ describe('TodoTable', () => {
       renderTable([todo({ dependencies: [] })])
       const row = screen.getByText('bake bread').closest('tr')!
       expect(within(row).getAllByText('—').length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('shared list', () => {
+    it('names the owner of a TODO created by someone else', () => {
+      renderTable([todo({ owner: { id: 99, username: 'sam', displayName: 'Sam' } })])
+      const row = screen.getByText('bake bread').closest('tr')!
+      expect(within(row).getByText('Sam')).toBeInTheDocument()
+    })
+
+    it('marks your own TODOs as yours rather than repeating your name', () => {
+      renderTable([todo()])
+      const row = screen.getByText('bake bread').closest('tr')!
+      expect(within(row).getByTitle('Created by you')).toHaveTextContent('you')
+    })
+
+    it('lets anyone edit a TODO created by someone else', () => {
+      renderTable([todo({ owner: { id: 99, username: 'sam', displayName: 'Sam' } })])
+      const row = screen.getByText('bake bread').closest('tr')!
+      expect(within(row).getByRole('button', { name: 'Edit' })).toBeEnabled()
+    })
+
+    it('stops anyone but the owner deleting a TODO', () => {
+      renderTable([todo({ owner: { id: 99, username: 'sam', displayName: 'Sam' } })])
+      const row = screen.getByText('bake bread').closest('tr')!
+      expect(within(row).getByRole('button', { name: 'Delete' })).toBeDisabled()
+    })
+
+    it('leaves the owner able to delete their own TODO', () => {
+      renderTable([todo()])
+      const row = screen.getByText('bake bread').closest('tr')!
+      expect(within(row).getByRole('button', { name: 'Delete' })).toBeEnabled()
     })
   })
 

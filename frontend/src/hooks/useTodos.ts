@@ -30,6 +30,7 @@ export function useTodoSearch(term: string, enabled: boolean) {
         priority: [],
         dueFrom: '',
         dueTo: '',
+        owner: '',
         blocked: '',
         search: term,
         deletedOnly: false,

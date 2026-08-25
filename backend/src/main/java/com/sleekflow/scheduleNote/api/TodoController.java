@@ -50,7 +50,9 @@ public class TodoController {
 	@GetMapping
 	@Operation(summary = "List TODOs",
 			description = """
-					Filter by status, priority, due-date range, dependency state, and name.
+					The list is shared: every signed-in user sees every TODO, and each one
+					carries the owner who created it. Filter by status, priority, due-date
+					range, dependency state, name, and owner.
 					Sort with `sort=<key>,<asc|desc>` using dueDate, priority, status, name,
 					createdAt, or updatedAt -- priority and status sort in their natural
 					order rather than alphabetically. Results are always paged.""")
@@ -58,6 +60,8 @@ public class TodoController {
 			@RequestParam(required = false) List<TodoPriority> priority,
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dueFrom,
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dueTo,
+			@Parameter(description = "Restrict to the TODOs created by one user, by user id")
+			@RequestParam(required = false) Long owner,
 			@Parameter(description = "true for TODOs waiting on a dependency, false for ones clear to start")
 			@RequestParam(required = false) Boolean blocked,
 			@RequestParam(required = false) String search,
@@ -65,12 +69,13 @@ public class TodoController {
 			@Parameter(description = "Show only soft-deleted TODOs")
 			@RequestParam(defaultValue = "false") boolean deletedOnly,
 			@PageableDefault(size = 25) Pageable pageable) {
-		TodoQuery query = new TodoQuery(status, priority, dueFrom, dueTo, blocked, search, includeDeleted, deletedOnly);
+		TodoQuery query = new TodoQuery(status, priority, dueFrom, dueTo, owner, blocked, search, includeDeleted,
+				deletedOnly);
 		return this.service.list(query, pageable);
 	}
 
 	@GetMapping("/revision")
-	@Operation(summary = "Fingerprint of the list, for change polling",
+	@Operation(summary = "Fingerprint of the shared list, for change polling",
 			description = """
 					Returns the newest update timestamp and the row count. Clients poll this
 					and refetch only when it differs from what they hold, which keeps an
@@ -111,14 +116,17 @@ public class TodoController {
 
 	@DeleteMapping("/{id}")
 	@Operation(summary = "Soft-delete a TODO",
-			description = "The TODO is hidden from the default list but retained and can be restored.")
+			description = """
+					The TODO is hidden from the default list but retained and can be restored.
+					Reserved to the TODO's owner: deleting someone else's returns 403.""")
 	public ResponseEntity<Void> delete(@PathVariable Long id) {
 		this.service.delete(id);
 		return ResponseEntity.noContent().build();
 	}
 
 	@PostMapping("/{id}/restore")
-	@Operation(summary = "Restore a soft-deleted TODO")
+	@Operation(summary = "Restore a soft-deleted TODO",
+			description = "Reserved to the TODO's owner, like deleting.")
 	public TodoResponse restore(@PathVariable Long id) {
 		return this.service.restore(id);
 	}

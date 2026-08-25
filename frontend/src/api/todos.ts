@@ -41,6 +41,7 @@ function toQuery(params: ListParams): Record<string, string | number | string[]>
   if (params.priority.length) query.priority = params.priority
   if (params.dueFrom) query.dueFrom = params.dueFrom
   if (params.dueTo) query.dueTo = params.dueTo
+  if (params.owner !== '') query.owner = params.owner
   if (params.blocked) query.blocked = params.blocked
   if (params.search.trim()) query.search = params.search.trim()
   if (params.deletedOnly) query.deletedOnly = 'true'

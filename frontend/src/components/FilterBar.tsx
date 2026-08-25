@@ -3,6 +3,8 @@ import type { TodoFilters, TodoPriority, TodoStatus } from '../types'
 
 interface Props {
   filters: TodoFilters
+  /** Used by the "only mine" toggle -- the list is shared, so this narrows it. */
+  currentUserId: number
   onChange: (filters: TodoFilters) => void
   onReset: () => void
 }
@@ -11,7 +13,7 @@ function toggle<T>(values: T[], value: T): T[] {
   return values.includes(value) ? values.filter((v) => v !== value) : [...values, value]
 }
 
-export function FilterBar({ filters, onChange, onReset }: Props) {
+export function FilterBar({ filters, currentUserId, onChange, onReset }: Props) {
   const set = (patch: Partial<TodoFilters>) => onChange({ ...filters, ...patch })
 
   return (
@@ -80,6 +82,17 @@ export function FilterBar({ filters, onChange, onReset }: Props) {
           <option value="true">Blocked</option>
           <option value="false">Unblocked</option>
         </select>
+      </div>
+
+      <div className="filter-group">
+        <label className="inline">
+          <input
+            type="checkbox"
+            checked={filters.owner === currentUserId}
+            onChange={(e) => set({ owner: e.target.checked ? currentUserId : '' })}
+          />
+          Only mine
+        </label>
       </div>
 
       <div className="filter-group">

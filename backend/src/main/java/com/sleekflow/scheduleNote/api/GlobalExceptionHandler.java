@@ -7,6 +7,7 @@ import com.sleekflow.scheduleNote.exception.AuthenticationFailedException;
 import com.sleekflow.scheduleNote.exception.CircularDependencyException;
 import com.sleekflow.scheduleNote.exception.DependenciesNotSatisfiedException;
 import com.sleekflow.scheduleNote.exception.InvalidTodoRequestException;
+import com.sleekflow.scheduleNote.exception.NotTodoOwnerException;
 import com.sleekflow.scheduleNote.exception.StaleTodoException;
 import com.sleekflow.scheduleNote.exception.TodoNotFoundException;
 import com.sleekflow.scheduleNote.exception.UnauthenticatedException;
@@ -42,6 +43,11 @@ class GlobalExceptionHandler {
 				"dependencies-not-satisfied");
 		problem.setProperty("outstandingDependencies", ex.getOutstanding());
 		return problem;
+	}
+
+	@ExceptionHandler(NotTodoOwnerException.class)
+	ProblemDetail handleNotOwner(NotTodoOwnerException ex) {
+		return problem(HttpStatus.FORBIDDEN, "Not your TODO", ex.getMessage(), "not-todo-owner");
 	}
 
 	@ExceptionHandler(CircularDependencyException.class)

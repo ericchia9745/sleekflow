@@ -207,3 +207,8 @@ p.error { margin: 0 0 0.75rem; }
 .dependency-outstanding { color: var(--warn); }
 .dependency-done { color: var(--muted); text-decoration: line-through; }
 .dependency-deleted { color: var(--muted); font-style: italic; }
+
+/* Whose TODO it is on the shared list. Your own rows say "you" rather than
+   repeating your name down the whole column. */
+.owner { font-size: 0.8rem; white-space: nowrap; }
+.owner-me { color: var(--muted); font-style: italic; }

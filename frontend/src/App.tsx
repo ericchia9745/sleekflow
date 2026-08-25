@@ -189,12 +189,18 @@ function TodoWorkspace() {
         />
       )}
 
-      <FilterBar filters={filters} onChange={applyFilters} onReset={() => applyFilters(EMPTY_FILTERS)} />
+      <FilterBar
+        filters={filters}
+        currentUserId={user?.id ?? 0}
+        onChange={applyFilters}
+        onReset={() => applyFilters(EMPTY_FILTERS)}
+      />
 
       {list.isError && <p className="banner error">{describeError(list.error)}</p>}
 
       <TodoTable
         todos={todos}
+        currentUserId={user?.id ?? 0}
         expandedId={expandedId}
         sortKey={sortKey}
         sortDirection={sortDirection}

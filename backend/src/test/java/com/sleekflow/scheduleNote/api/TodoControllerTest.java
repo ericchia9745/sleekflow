@@ -8,6 +8,7 @@ import com.sleekflow.scheduleNote.dto.RecurrenceResponse;
 import com.sleekflow.scheduleNote.config.AppProperties;
 import com.sleekflow.scheduleNote.security.AuthenticationFilter;
 import com.sleekflow.scheduleNote.dto.StatusChangeResponse;
+import com.sleekflow.scheduleNote.dto.TodoOwnerResponse;
 import com.sleekflow.scheduleNote.dto.TodoResponse;
 import com.sleekflow.scheduleNote.domain.RecurrenceType;
 import com.sleekflow.scheduleNote.domain.TodoPriority;
@@ -62,8 +63,8 @@ class TodoControllerTest {
 
 	private static TodoResponse sampleTodo() {
 		return new TodoResponse(1L, "bake bread", null, LocalDate.of(2026, 3, 10), TodoStatus.NOT_STARTED,
-				TodoPriority.MEDIUM, new RecurrenceResponse(RecurrenceType.NONE, null), null, List.of(), false, null,
-				null, Instant.EPOCH, Instant.EPOCH, 0L);
+				TodoPriority.MEDIUM, new RecurrenceResponse(RecurrenceType.NONE, null), null, List.of(),
+				new TodoOwnerResponse(7L, "eric", "Eric"), false, null, null, Instant.EPOCH, Instant.EPOCH, 0L);
 	}
 
 	@Test

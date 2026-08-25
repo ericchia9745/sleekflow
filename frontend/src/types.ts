@@ -18,6 +18,13 @@ export interface Recurrence {
   interval: number | null
 }
 
+/** Who created a TODO. The list is shared, so this is attribution. */
+export interface TodoOwner {
+  id: number
+  username: string | null
+  displayName: string
+}
+
 export interface TodoSummary {
   id: number
   name: string
@@ -35,6 +42,7 @@ export interface Todo {
   recurrence: Recurrence
   recurrenceSourceId: number | null
   dependencies: TodoSummary[]
+  owner: TodoOwner
   blocked: boolean
   completedAt: string | null
   deletedAt: string | null
@@ -73,6 +81,8 @@ export interface TodoFilters {
   priority: TodoPriority[]
   dueFrom: string
   dueTo: string
+  /** A user id to narrow the shared list to one person's TODOs, or '' for everyone's. */
+  owner: number | ''
   blocked: '' | 'true' | 'false'
   search: string
   deletedOnly: boolean
@@ -83,6 +93,7 @@ export const EMPTY_FILTERS: TodoFilters = {
   priority: [],
   dueFrom: '',
   dueTo: '',
+  owner: '',
   blocked: '',
   search: '',
   deletedOnly: false,
