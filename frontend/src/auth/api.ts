@@ -30,6 +30,18 @@ export async function login(username: string, password: string): Promise<StoredS
   return data
 }
 
+/**
+ * Replaces a user's password given only their username -- no current
+ * password, no email link. `AuthController` documents the trade-off; this
+ * just calls it.
+ */
+export async function changePassword(username: string, newPassword: string): Promise<void> {
+  await apiClient.post('/auth/change-password', {
+    username,
+    newPassword: await sha256Hex(newPassword),
+  })
+}
+
 export async function logout(): Promise<void> {
   await apiClient.post('/auth/logout')
 }

@@ -2,11 +2,13 @@ package com.sleekflow.scheduleNote.service;
 
 import com.sleekflow.scheduleNote.ClientPasswordHash;
 import com.sleekflow.scheduleNote.domain.UserSession;
+import com.sleekflow.scheduleNote.dto.ChangePasswordRequest;
 import com.sleekflow.scheduleNote.dto.LoginRequest;
 import com.sleekflow.scheduleNote.dto.RegisterRequest;
 import com.sleekflow.scheduleNote.dto.SessionResponse;
 import com.sleekflow.scheduleNote.exception.AuthenticationFailedException;
 import com.sleekflow.scheduleNote.exception.UnauthenticatedException;
+import com.sleekflow.scheduleNote.exception.UserNotFoundException;
 import com.sleekflow.scheduleNote.exception.UsernameTakenException;
 import com.sleekflow.scheduleNote.repository.UserRepository;
 import com.sleekflow.scheduleNote.repository.UserSessionRepository;
@@ -170,5 +172,32 @@ class AuthServiceIntegrationTest {
 		UserSession touched = this.authService.authenticate(session.token());
 
 		assertThat(touched.getExpiresAt()).isAfterOrEqualTo(issuedExpiry);
+	}
+
+	@Test
+	void changingThePasswordByUsernameAllowsSignInWithTheNewOne() {
+		registerEric();
+		String newPassword = ClientPasswordHash.of("a different password");
+
+		this.authService.changePassword(new ChangePasswordRequest("eric", newPassword));
+
+		SessionResponse session = this.authService.login(new LoginRequest("eric", newPassword));
+		assertThat(session.user().username()).isEqualTo("eric");
+	}
+
+	@Test
+	void theOldPasswordStopsWorkingAfterAChange() {
+		registerEric();
+
+		this.authService.changePassword(new ChangePasswordRequest("eric", ClientPasswordHash.of("new password")));
+
+		assertThatExceptionOfType(AuthenticationFailedException.class)
+			.isThrownBy(() -> this.authService.login(new LoginRequest("eric", PASSWORD)));
+	}
+
+	@Test
+	void changingThePasswordForAnUnknownUsernameFails() {
+		assertThatExceptionOfType(UserNotFoundException.class).isThrownBy(
+				() -> this.authService.changePassword(new ChangePasswordRequest("nobody", PASSWORD)));
 	}
 }

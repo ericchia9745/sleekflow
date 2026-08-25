@@ -23,16 +23,17 @@ import tools.jackson.databind.ObjectMapper;
  * Resolves the bearer token on every API request and rejects the ones that
  * cannot be resolved.
  * <p>
- * Sign-in, registration and the API documentation are open; everything else
- * under {@code /api} requires a session. Preflight requests pass through
- * untouched, since a browser never attaches credentials to them.
+ * Sign-in, registration, password changes and the API documentation are open;
+ * everything else under {@code /api} requires a session. Preflight requests
+ * pass through untouched, since a browser never attaches credentials to them.
  */
 @Component
 public class AuthenticationFilter extends OncePerRequestFilter {
 
 	private static final String BEARER = "Bearer ";
 
-	private static final List<String> OPEN_PATHS = List.of("/api/auth/register", "/api/auth/login");
+	private static final List<String> OPEN_PATHS = List.of("/api/auth/register", "/api/auth/login",
+			"/api/auth/change-password");
 
 	private final AuthService authService;
 
