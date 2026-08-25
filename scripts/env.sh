@@ -6,16 +6,17 @@
 : "${TOOLS_HOME:=$HOME/.local/opt}"
 : "${NODE_HOME:=$TOOLS_HOME/node}"
 : "${MYSQL_HOME:=$TOOLS_HOME/mysql}"
+: "${GH_HOME:=$TOOLS_HOME/gh}"
 : "${MYSQL_CONF:=$HOME/.local/etc/my.cnf}"
 : "${MYSQL_VAR:=$HOME/.local/var/mysql}"
 : "${MYSQL_SOCKET:=$MYSQL_VAR/mysql.sock}"
 : "${JAVA_HOME:=$(/usr/libexec/java_home 2>/dev/null)}"
 
-export TOOLS_HOME NODE_HOME MYSQL_HOME MYSQL_CONF MYSQL_VAR MYSQL_SOCKET JAVA_HOME
+export TOOLS_HOME NODE_HOME MYSQL_HOME GH_HOME MYSQL_CONF MYSQL_VAR MYSQL_SOCKET JAVA_HOME
 
 # Only prepend directories that actually exist, so this works unchanged on a
 # machine where node/mysql came from a package manager and are already on PATH.
-for dir in "$NODE_HOME/bin" "$MYSQL_HOME/bin" "$JAVA_HOME/bin"; do
+for dir in "$NODE_HOME/bin" "$MYSQL_HOME/bin" "$GH_HOME/bin" "$JAVA_HOME/bin"; do
   [ -d "$dir" ] && case ":$PATH:" in *":$dir:"*) ;; *) PATH="$dir:$PATH" ;; esac
 done
 export PATH
