@@ -1,22 +1,22 @@
-package com.sleekflow.todo.service;
+package com.sleekflow.scheduleNote.service;
 
 import java.time.LocalDate;
 import java.util.List;
 
-import com.sleekflow.todo.api.dto.ChangeStatusRequest;
-import com.sleekflow.todo.api.dto.CreateTodoRequest;
-import com.sleekflow.todo.api.dto.RecurrenceRequest;
-import com.sleekflow.todo.api.dto.StatusChangeResponse;
-import com.sleekflow.todo.api.dto.TodoResponse;
-import com.sleekflow.todo.api.dto.UpdateTodoRequest;
-import com.sleekflow.todo.domain.RecurrenceType;
-import com.sleekflow.todo.domain.TodoPriority;
-import com.sleekflow.todo.domain.TodoStatus;
-import com.sleekflow.todo.repository.TodoRepository;
-import com.sleekflow.todo.service.exception.CircularDependencyException;
-import com.sleekflow.todo.service.exception.DependenciesNotSatisfiedException;
-import com.sleekflow.todo.service.exception.StaleTodoException;
-import com.sleekflow.todo.service.exception.TodoNotFoundException;
+import com.sleekflow.scheduleNote.dto.ChangeStatusRequest;
+import com.sleekflow.scheduleNote.dto.CreateTodoRequest;
+import com.sleekflow.scheduleNote.dto.RecurrenceRequest;
+import com.sleekflow.scheduleNote.dto.StatusChangeResponse;
+import com.sleekflow.scheduleNote.dto.TodoResponse;
+import com.sleekflow.scheduleNote.dto.UpdateTodoRequest;
+import com.sleekflow.scheduleNote.domain.RecurrenceType;
+import com.sleekflow.scheduleNote.domain.TodoPriority;
+import com.sleekflow.scheduleNote.domain.TodoStatus;
+import com.sleekflow.scheduleNote.repository.TodoRepository;
+import com.sleekflow.scheduleNote.exception.CircularDependencyException;
+import com.sleekflow.scheduleNote.exception.DependenciesNotSatisfiedException;
+import com.sleekflow.scheduleNote.exception.StaleTodoException;
+import com.sleekflow.scheduleNote.exception.TodoNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

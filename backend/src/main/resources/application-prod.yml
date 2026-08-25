@@ -17,4 +17,4 @@ springdoc:
 
 logging:
   level:
-    com.sleekflow.todo: ${LOG_LEVEL_APP:INFO}
+    com.sleekflow.scheduleNote: ${LOG_LEVEL_APP:INFO}

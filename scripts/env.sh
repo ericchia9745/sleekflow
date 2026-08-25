@@ -31,8 +31,8 @@ fi
 
 : "${DB_HOST:=127.0.0.1}"
 : "${DB_PORT:=3306}"
-: "${DB_NAME:=sleekflow_todo}"
-: "${TEST_DB_NAME:=sleekflow_todo_test}"
+: "${DB_NAME:=sleekflow_schedule_note}"
+: "${TEST_DB_NAME:=sleekflow_schedule_note_test}"
 : "${DB_USER:=todo}"
 : "${DB_PASSWORD:=todo_dev_pw}"
 : "${SERVER_PORT:=8080}"

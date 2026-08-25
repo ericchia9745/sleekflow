@@ -114,7 +114,7 @@ is missing. Full reference in [CONFIGURATION.md](CONFIGURATION.md).
 - **An audit trail.** Soft delete satisfies the stated requirement. Full history
   is a different feature with different storage costs.
 - **Testcontainers.** Tests run against a real MySQL schema, which is the point;
-  but this machine has no Docker, so they use a separate `sleekflow_todo_test`
+  but this machine has no Docker, so they use a separate `sleekflow_schedule_note_test`
   database instead. Testcontainers would make CI cleaner and is the first thing
   I would change in an environment that has Docker.
 - **A tested Docker Compose path for the app itself.** Compose is provided for

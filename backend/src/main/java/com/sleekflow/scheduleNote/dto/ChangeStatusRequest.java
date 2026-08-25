@@ -1,6 +1,6 @@
-package com.sleekflow.todo.api.dto;
+package com.sleekflow.scheduleNote.dto;
 
-import com.sleekflow.todo.domain.TodoStatus;
+import com.sleekflow.scheduleNote.domain.TodoStatus;
 import jakarta.validation.constraints.NotNull;
 
 public record ChangeStatusRequest(@NotNull TodoStatus status, @NotNull Long version) {

@@ -1,5 +1,5 @@
 org.springframework.boot.EnvironmentPostProcessor=\
-com.sleekflow.todo.config.RequiredConfigurationEnvironmentPostProcessor
+com.sleekflow.scheduleNote.config.RequiredConfigurationEnvironmentPostProcessor
 
 org.springframework.boot.diagnostics.FailureAnalyzer=\
-com.sleekflow.todo.config.MissingConfigurationFailureAnalyzer
+com.sleekflow.scheduleNote.config.MissingConfigurationFailureAnalyzer

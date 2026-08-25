@@ -1,21 +1,21 @@
-package com.sleekflow.todo.api;
+package com.sleekflow.scheduleNote.api;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
-import com.sleekflow.todo.api.dto.RecurrenceResponse;
-import com.sleekflow.todo.config.AppProperties;
-import com.sleekflow.todo.api.dto.StatusChangeResponse;
-import com.sleekflow.todo.api.dto.TodoResponse;
-import com.sleekflow.todo.domain.RecurrenceType;
-import com.sleekflow.todo.domain.TodoPriority;
-import com.sleekflow.todo.domain.TodoStatus;
-import com.sleekflow.todo.service.TodoService;
-import com.sleekflow.todo.service.exception.CircularDependencyException;
-import com.sleekflow.todo.service.exception.DependenciesNotSatisfiedException;
-import com.sleekflow.todo.service.exception.StaleTodoException;
-import com.sleekflow.todo.service.exception.TodoNotFoundException;
+import com.sleekflow.scheduleNote.dto.RecurrenceResponse;
+import com.sleekflow.scheduleNote.config.AppProperties;
+import com.sleekflow.scheduleNote.dto.StatusChangeResponse;
+import com.sleekflow.scheduleNote.dto.TodoResponse;
+import com.sleekflow.scheduleNote.domain.RecurrenceType;
+import com.sleekflow.scheduleNote.domain.TodoPriority;
+import com.sleekflow.scheduleNote.domain.TodoStatus;
+import com.sleekflow.scheduleNote.service.TodoService;
+import com.sleekflow.scheduleNote.exception.CircularDependencyException;
+import com.sleekflow.scheduleNote.exception.DependenciesNotSatisfiedException;
+import com.sleekflow.scheduleNote.exception.StaleTodoException;
+import com.sleekflow.scheduleNote.exception.TodoNotFoundException;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;

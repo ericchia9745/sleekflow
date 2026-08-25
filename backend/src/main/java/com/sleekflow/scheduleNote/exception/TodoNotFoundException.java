@@ -1,4 +1,4 @@
-package com.sleekflow.todo.service.exception;
+package com.sleekflow.scheduleNote.exception;
 
 public class TodoNotFoundException extends RuntimeException {
 

@@ -77,7 +77,7 @@ The settings you are most likely to need:
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `DB_HOST` / `DB_PORT` / `DB_NAME` | `127.0.0.1` / `3306` / `sleekflow_todo` | Database location |
+| `DB_HOST` / `DB_PORT` / `DB_NAME` | `127.0.0.1` / `3306` / `sleekflow_schedule_note` | Database location |
 | `DB_USER` / `DB_PASSWORD` | `todo` / `todo_dev_pw` | Database credentials |
 | `SERVER_PORT` | `8080` | Backend port |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:5173,…` | Only needed if the UI is not behind the dev proxy |
@@ -96,7 +96,7 @@ cd backend  && ./mvnw test    # 65 tests: domain units, service integration, web
 cd frontend && npm test       # 12 tests: error mapping and table rendering
 ```
 
-Backend integration tests run against a real MySQL schema (`sleekflow_todo_test`)
+Backend integration tests run against a real MySQL schema (`sleekflow_schedule_note_test`)
 rather than an in-memory substitute, because several rules — the blocked filter,
 the rank-based sorts, the soft-delete predicate — are enforced in SQL and would
 pass against a mock while failing in production. They use their own schema, so a

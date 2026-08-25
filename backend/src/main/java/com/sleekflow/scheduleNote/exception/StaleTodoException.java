@@ -1,4 +1,4 @@
-package com.sleekflow.todo.service.exception;
+package com.sleekflow.scheduleNote.exception;
 
 /** Raised when a client writes using a version another writer has already superseded. */
 public class StaleTodoException extends RuntimeException {

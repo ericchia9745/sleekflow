@@ -1,10 +1,10 @@
-package com.sleekflow.todo.api.dto;
+package com.sleekflow.scheduleNote.dto;
 
 import java.time.LocalDate;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.sleekflow.todo.domain.TodoPriority;
+import com.sleekflow.scheduleNote.domain.TodoPriority;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;

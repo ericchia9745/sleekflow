@@ -1,4 +1,4 @@
-package com.sleekflow.todo.api.dto;
+package com.sleekflow.scheduleNote.dto;
 
 /**
  * @param todo the TODO after the status change

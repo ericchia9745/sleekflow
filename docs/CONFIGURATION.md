@@ -32,8 +32,8 @@ cp frontend/.env.example frontend/.env.local
 |---|---|---|
 | `DB_HOST` | `127.0.0.1` | |
 | `DB_PORT` | `3306` | |
-| `DB_NAME` | `sleekflow_todo` | Created by `./scripts/db.sh bootstrap` |
-| `TEST_DB_NAME` | `sleekflow_todo_test` | Used only by the `test` profile |
+| `DB_NAME` | `sleekflow_schedule_note` | Created by `./scripts/db.sh bootstrap` |
+| `TEST_DB_NAME` | `sleekflow_schedule_note_test` | Used only by the `test` profile |
 | `DB_USER` | `todo` | |
 | `DB_PASSWORD` | `todo_dev_pw` | Development credential; override in any shared environment |
 | `DB_POOL_MAX_SIZE` | `20` | HikariCP maximum pool size |
@@ -51,7 +51,7 @@ cp frontend/.env.example frontend/.env.local
 
 | Variable | Default | Notes |
 |---|---|---|
-| `APP_NAME` | `sleekflow-todo` | |
+| `APP_NAME` | `sleekflow-schedule-note` | |
 | `FLYWAY_ENABLED` | `true` | Set `false` if migrations are applied out of band |
 | `JPA_DDL_AUTO` | `validate` | Schema is owned by Flyway; `validate` catches drift |
 | `JPA_SHOW_SQL` | `false` | |
@@ -112,7 +112,7 @@ cd backend && ./mvnw spring-boot:run
 ```bash
 SPRING_PROFILES_ACTIVE=prod \
 DB_HOST=… DB_NAME=… DB_USER=… DB_PASSWORD=… \
-java -jar backend/target/todo-0.0.1-SNAPSHOT.jar
+java -jar backend/target/schedule-note-0.0.1-SNAPSHOT.jar
 ```
 
 **Different toolchain locations** — `scripts/env.sh` only prepends directories

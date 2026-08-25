@@ -1,19 +1,19 @@
-package com.sleekflow.todo.api;
+package com.sleekflow.scheduleNote.api;
 
 import java.net.URI;
 import java.time.LocalDate;
 import java.util.List;
 
-import com.sleekflow.todo.api.dto.AddDependencyRequest;
-import com.sleekflow.todo.api.dto.ChangeStatusRequest;
-import com.sleekflow.todo.api.dto.CreateTodoRequest;
-import com.sleekflow.todo.api.dto.StatusChangeResponse;
-import com.sleekflow.todo.api.dto.TodoResponse;
-import com.sleekflow.todo.api.dto.UpdateTodoRequest;
-import com.sleekflow.todo.domain.TodoPriority;
-import com.sleekflow.todo.domain.TodoStatus;
-import com.sleekflow.todo.service.TodoQuery;
-import com.sleekflow.todo.service.TodoService;
+import com.sleekflow.scheduleNote.dto.AddDependencyRequest;
+import com.sleekflow.scheduleNote.dto.ChangeStatusRequest;
+import com.sleekflow.scheduleNote.dto.CreateTodoRequest;
+import com.sleekflow.scheduleNote.dto.StatusChangeResponse;
+import com.sleekflow.scheduleNote.dto.TodoResponse;
+import com.sleekflow.scheduleNote.dto.UpdateTodoRequest;
+import com.sleekflow.scheduleNote.domain.TodoPriority;
+import com.sleekflow.scheduleNote.domain.TodoStatus;
+import com.sleekflow.scheduleNote.service.TodoQuery;
+import com.sleekflow.scheduleNote.service.TodoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;

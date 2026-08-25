@@ -4,7 +4,7 @@
 # overrides as the rest of the project.
 set -euo pipefail
 
-TEST_DB="${TEST_DB_NAME:-sleekflow_todo_test}"
+TEST_DB="${TEST_DB_NAME:-sleekflow_schedule_note_test}"
 
 mysql --protocol=socket -u root -p"$MYSQL_ROOT_PASSWORD" <<SQL
 CREATE DATABASE IF NOT EXISTS \`${TEST_DB}\`

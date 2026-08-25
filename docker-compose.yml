@@ -5,15 +5,15 @@
 services:
   mysql:
     image: mysql:9
-    container_name: sleekflow-todo-mysql
+    container_name: sleekflow-schedule-note-mysql
     ports:
       - "${DB_PORT:-3306}:3306"
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
-      MYSQL_DATABASE: ${DB_NAME:-sleekflow_todo}
+      MYSQL_DATABASE: ${DB_NAME:-sleekflow_schedule_note}
       MYSQL_USER: ${DB_USER:-todo}
       MYSQL_PASSWORD: ${DB_PASSWORD:-todo_dev_pw}
-      TEST_DB_NAME: ${TEST_DB_NAME:-sleekflow_todo_test}
+      TEST_DB_NAME: ${TEST_DB_NAME:-sleekflow_schedule_note_test}
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_0900_ai_ci
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${DB_ROOT_PASSWORD:-root}"]

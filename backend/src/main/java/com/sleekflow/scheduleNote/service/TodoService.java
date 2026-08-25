@@ -1,4 +1,4 @@
-package com.sleekflow.todo.service;
+package com.sleekflow.scheduleNote.service;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -10,23 +10,23 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 
-import com.sleekflow.todo.api.dto.ChangeStatusRequest;
-import com.sleekflow.todo.api.dto.CreateTodoRequest;
-import com.sleekflow.todo.api.dto.RecurrenceRequest;
-import com.sleekflow.todo.api.dto.StatusChangeResponse;
-import com.sleekflow.todo.api.dto.TodoResponse;
-import com.sleekflow.todo.api.dto.UpdateTodoRequest;
-import com.sleekflow.todo.config.AppProperties;
-import com.sleekflow.todo.domain.Recurrence;
-import com.sleekflow.todo.domain.Todo;
-import com.sleekflow.todo.domain.TodoStatus;
-import com.sleekflow.todo.repository.TodoRepository;
-import com.sleekflow.todo.repository.TodoSpecifications;
-import com.sleekflow.todo.service.exception.CircularDependencyException;
-import com.sleekflow.todo.service.exception.DependenciesNotSatisfiedException;
-import com.sleekflow.todo.service.exception.InvalidTodoRequestException;
-import com.sleekflow.todo.service.exception.StaleTodoException;
-import com.sleekflow.todo.service.exception.TodoNotFoundException;
+import com.sleekflow.scheduleNote.dto.ChangeStatusRequest;
+import com.sleekflow.scheduleNote.dto.CreateTodoRequest;
+import com.sleekflow.scheduleNote.dto.RecurrenceRequest;
+import com.sleekflow.scheduleNote.dto.StatusChangeResponse;
+import com.sleekflow.scheduleNote.dto.TodoResponse;
+import com.sleekflow.scheduleNote.dto.UpdateTodoRequest;
+import com.sleekflow.scheduleNote.config.AppProperties;
+import com.sleekflow.scheduleNote.domain.Recurrence;
+import com.sleekflow.scheduleNote.domain.Todo;
+import com.sleekflow.scheduleNote.domain.TodoStatus;
+import com.sleekflow.scheduleNote.repository.TodoRepository;
+import com.sleekflow.scheduleNote.specification.TodoSpecifications;
+import com.sleekflow.scheduleNote.exception.CircularDependencyException;
+import com.sleekflow.scheduleNote.exception.DependenciesNotSatisfiedException;
+import com.sleekflow.scheduleNote.exception.InvalidTodoRequestException;
+import com.sleekflow.scheduleNote.exception.StaleTodoException;
+import com.sleekflow.scheduleNote.exception.TodoNotFoundException;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;

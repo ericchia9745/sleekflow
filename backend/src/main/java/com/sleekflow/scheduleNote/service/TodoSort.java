@@ -1,9 +1,9 @@
-package com.sleekflow.todo.service;
+package com.sleekflow.scheduleNote.service;
 
 import java.util.Map;
 import java.util.Set;
 
-import com.sleekflow.todo.service.exception.InvalidTodoRequestException;
+import com.sleekflow.scheduleNote.exception.InvalidTodoRequestException;
 
 import org.springframework.data.domain.Sort;
 

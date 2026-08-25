@@ -1,13 +1,13 @@
-package com.sleekflow.todo.api.dto;
+package com.sleekflow.scheduleNote.dto;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Comparator;
 
-import com.sleekflow.todo.domain.Todo;
-import com.sleekflow.todo.domain.TodoPriority;
-import com.sleekflow.todo.domain.TodoStatus;
+import com.sleekflow.scheduleNote.domain.Todo;
+import com.sleekflow.scheduleNote.domain.TodoPriority;
+import com.sleekflow.scheduleNote.domain.TodoStatus;
 
 /**
  * @param blocked whether a dependency is still outstanding. Computed per page

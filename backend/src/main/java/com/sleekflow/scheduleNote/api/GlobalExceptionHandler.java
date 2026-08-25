@@ -1,13 +1,13 @@
-package com.sleekflow.todo.api;
+package com.sleekflow.scheduleNote.api;
 
 import java.util.List;
 import java.util.Map;
 
-import com.sleekflow.todo.service.exception.CircularDependencyException;
-import com.sleekflow.todo.service.exception.DependenciesNotSatisfiedException;
-import com.sleekflow.todo.service.exception.InvalidTodoRequestException;
-import com.sleekflow.todo.service.exception.StaleTodoException;
-import com.sleekflow.todo.service.exception.TodoNotFoundException;
+import com.sleekflow.scheduleNote.exception.CircularDependencyException;
+import com.sleekflow.scheduleNote.exception.DependenciesNotSatisfiedException;
+import com.sleekflow.scheduleNote.exception.InvalidTodoRequestException;
+import com.sleekflow.scheduleNote.exception.StaleTodoException;
+import com.sleekflow.scheduleNote.exception.TodoNotFoundException;
 
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;

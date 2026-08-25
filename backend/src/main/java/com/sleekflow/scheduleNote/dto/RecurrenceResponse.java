@@ -1,7 +1,7 @@
-package com.sleekflow.todo.api.dto;
+package com.sleekflow.scheduleNote.dto;
 
-import com.sleekflow.todo.domain.Recurrence;
-import com.sleekflow.todo.domain.RecurrenceType;
+import com.sleekflow.scheduleNote.domain.Recurrence;
+import com.sleekflow.scheduleNote.domain.RecurrenceType;
 
 public record RecurrenceResponse(RecurrenceType type, Integer interval) {
 

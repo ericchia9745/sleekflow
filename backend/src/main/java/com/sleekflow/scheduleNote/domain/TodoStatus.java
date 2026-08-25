@@ -1,4 +1,4 @@
-package com.sleekflow.todo.domain;
+package com.sleekflow.scheduleNote.domain;
 
 public enum TodoStatus {
 

@@ -1,4 +1,4 @@
-package com.sleekflow.todo.config;
+package com.sleekflow.scheduleNote.config;
 
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;

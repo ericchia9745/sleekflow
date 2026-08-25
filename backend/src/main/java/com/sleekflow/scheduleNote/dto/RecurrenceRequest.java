@@ -1,8 +1,8 @@
-package com.sleekflow.todo.api.dto;
+package com.sleekflow.scheduleNote.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.sleekflow.todo.domain.Recurrence;
-import com.sleekflow.todo.domain.RecurrenceType;
+import com.sleekflow.scheduleNote.domain.Recurrence;
+import com.sleekflow.scheduleNote.domain.RecurrenceType;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotNull;

@@ -1,4 +1,4 @@
-package com.sleekflow.todo.config;
+package com.sleekflow.scheduleNote.config;
 
 import java.util.List;
 

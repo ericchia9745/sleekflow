@@ -9,10 +9,10 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.sleekflow</groupId>
-	<artifactId>todo</artifactId>
+	<artifactId>schedule-note</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>todo</name>
-	<description>SleekFlow TODO list service</description>
+	<name>schedule-note</name>
+	<description>SleekFlow Schedule Note - TODO list service</description>
 	<properties>
 		<java.version>25</java.version>
 		<springdoc.version>3.1.0</springdoc.version>

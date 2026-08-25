@@ -10,10 +10,10 @@ spring:
       - optional:file:../.env[.properties]
 
   application:
-    name: ${APP_NAME:sleekflow-todo}
+    name: ${APP_NAME:sleekflow-schedule-note}
 
   datasource:
-    url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:sleekflow_todo}?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&rewriteBatchedStatements=true
+    url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:sleekflow_schedule_note}?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&rewriteBatchedStatements=true
     username: ${DB_USER:todo}
     password: ${DB_PASSWORD:todo_dev_pw}
     hikari:
@@ -71,5 +71,5 @@ management:
 
 logging:
   level:
-    com.sleekflow.todo: ${LOG_LEVEL_APP:DEBUG}
+    com.sleekflow.scheduleNote: ${LOG_LEVEL_APP:DEBUG}
     org.hibernate.SQL: ${LOG_LEVEL_SQL:INFO}
