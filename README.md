@@ -40,6 +40,13 @@ cd backend && ./mvnw spring-boot:run
 cd frontend && npm install && npm run dev
 ```
 
+Optionally load demo data — a dependency chain, recurring chores, an overdue
+task, plus 12,000 generated rows to exercise paging and filtering at scale:
+
+```bash
+./scripts/seed.sh          # ./scripts/seed.sh 0 for just the demo set
+```
+
 Or start the backend and frontend together with `./scripts/dev.sh`.
 
 ## Prerequisites
@@ -100,7 +107,7 @@ test run never touches development data.
 ```
 backend/     Spring Boot service (REST API, domain model, Flyway migrations)
 frontend/    React single-page app
-scripts/     Local development helpers (db.sh, dev.sh, env.sh)
+scripts/     Local development helpers (db.sh, dev.sh, env.sh, seed.sh)
 docs/        Configuration reference and decision log
 docker/      MySQL container init hook
 ```
