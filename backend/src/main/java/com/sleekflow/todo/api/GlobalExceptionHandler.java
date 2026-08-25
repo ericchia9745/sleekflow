@@ -1,0 +1,89 @@
+package com.sleekflow.todo.api;
+
+import java.util.List;
+import java.util.Map;
+
+import com.sleekflow.todo.service.exception.CircularDependencyException;
+import com.sleekflow.todo.service.exception.DependenciesNotSatisfiedException;
+import com.sleekflow.todo.service.exception.InvalidTodoRequestException;
+import com.sleekflow.todo.service.exception.StaleTodoException;
+import com.sleekflow.todo.service.exception.TodoNotFoundException;
+
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+/**
+ * Maps domain failures onto RFC 9457 problem responses, so a client can react to
+ * {@code type} rather than parsing prose.
+ */
+@RestControllerAdvice
+class GlobalExceptionHandler {
+
+	private static final String PROBLEM_BASE = "https://sleekflow.example/problems/";
+
+	@ExceptionHandler(TodoNotFoundException.class)
+	ProblemDetail handleNotFound(TodoNotFoundException ex) {
+		ProblemDetail problem = problem(HttpStatus.NOT_FOUND, "TODO not found", ex.getMessage(), "todo-not-found");
+		problem.setProperty("todoId", ex.getId());
+		return problem;
+	}
+
+	@ExceptionHandler(DependenciesNotSatisfiedException.class)
+	ProblemDetail handleBlocked(DependenciesNotSatisfiedException ex) {
+		ProblemDetail problem = problem(HttpStatus.CONFLICT, "Dependencies not satisfied", ex.getMessage(),
+				"dependencies-not-satisfied");
+		problem.setProperty("outstandingDependencies", ex.getOutstanding());
+		return problem;
+	}
+
+	@ExceptionHandler(CircularDependencyException.class)
+	ProblemDetail handleCycle(CircularDependencyException ex) {
+		return problem(HttpStatus.CONFLICT, "Circular dependency", ex.getMessage(), "circular-dependency");
+	}
+
+	/**
+	 * Both the explicit version check and a lost update detected by the database
+	 * mean the same thing to a client: refetch and try again.
+	 */
+	@ExceptionHandler(StaleTodoException.class)
+	ProblemDetail handleStale(StaleTodoException ex) {
+		ProblemDetail problem = problem(HttpStatus.CONFLICT, "Concurrent modification", ex.getMessage(),
+				"stale-version");
+		problem.setProperty("expectedVersion", ex.getExpectedVersion());
+		problem.setProperty("actualVersion", ex.getActualVersion());
+		return problem;
+	}
+
+	@ExceptionHandler(OptimisticLockingFailureException.class)
+	ProblemDetail handleOptimisticLock(OptimisticLockingFailureException ex) {
+		return problem(HttpStatus.CONFLICT, "Concurrent modification",
+				"Someone else changed this TODO while your request was in flight. Refetch it and try again.",
+				"stale-version");
+	}
+
+	@ExceptionHandler(InvalidTodoRequestException.class)
+	ProblemDetail handleInvalidRequest(InvalidTodoRequestException ex) {
+		return problem(HttpStatus.BAD_REQUEST, "Invalid request", ex.getMessage(), "invalid-request");
+	}
+
+	@ExceptionHandler(MethodArgumentNotValidException.class)
+	ProblemDetail handleValidation(MethodArgumentNotValidException ex) {
+		List<Map<String, String>> errors = ex.getBindingResult().getFieldErrors().stream().map((error) -> Map.of(
+				"field", error.getField(), "message", String.valueOf(error.getDefaultMessage()))).toList();
+		ProblemDetail problem = problem(HttpStatus.BAD_REQUEST, "Validation failed",
+				"One or more fields are invalid.", "validation-failed");
+		problem.setProperty("errors", errors);
+		return problem;
+	}
+
+	private static ProblemDetail problem(HttpStatus status, String title, String detail, String type) {
+		ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
+		problem.setTitle(title);
+		problem.setType(java.net.URI.create(PROBLEM_BASE + type));
+		return problem;
+	}
+}

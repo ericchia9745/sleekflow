@@ -39,7 +39,10 @@ spring:
     baseline-on-migrate: true
 
   jackson:
-    default-property-inclusion: non_null
+    # Emit nulls explicitly. Omitting them would make every field optional in
+    # the client's type definitions and hide the difference between "no due
+    # date" and "field not returned".
+    default-property-inclusion: always
 
 server:
   port: ${SERVER_PORT:8080}
