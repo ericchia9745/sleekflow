@@ -15,7 +15,9 @@ import org.springframework.data.repository.query.Param;
 
 public interface TodoRepository extends JpaRepository<Todo, Long>, JpaSpecificationExecutor<Todo> {
 
-	Optional<Todo> findByIdAndDeletedAtIsNull(Long id);
+	Optional<Todo> findByIdAndDeletedAtIsNullAndUserId(Long id, Long userId);
+
+	Optional<Todo> findByIdAndUserId(Long id, Long userId);
 
 	/**
 	 * Of the given TODOs, which are blocked. Answering this for a whole page in
@@ -43,8 +45,9 @@ public interface TodoRepository extends JpaRepository<Todo, Long>, JpaSpecificat
 	 * One aggregate row summarising the state of the list, for change polling.
 	 * Two aggregates over an indexed column: far cheaper than shipping a page.
 	 */
-	@Query("SELECT new com.sleekflow.scheduleNote.dto.TodoRevisionResponse(MAX(t.updatedAt), COUNT(t)) FROM Todo t")
-	TodoRevisionResponse loadRevision();
+	@Query("SELECT new com.sleekflow.scheduleNote.dto.TodoRevisionResponse(MAX(t.updatedAt), COUNT(t)) FROM Todo t "
+			+ "WHERE t.userId = :userId")
+	TodoRevisionResponse loadRevision(@Param("userId") Long userId);
 
 	/** TODOs that depend on the given one -- used to explain a blocked state. */
 	@Query("SELECT t FROM Todo t JOIN t.dependencies d WHERE d.id = :id AND t.deletedAt IS NULL")

@@ -12,11 +12,15 @@ import com.sleekflow.scheduleNote.dto.UpdateTodoRequest;
 import com.sleekflow.scheduleNote.domain.RecurrenceType;
 import com.sleekflow.scheduleNote.domain.TodoPriority;
 import com.sleekflow.scheduleNote.domain.TodoStatus;
+import com.sleekflow.scheduleNote.domain.User;
 import com.sleekflow.scheduleNote.repository.TodoRepository;
+import com.sleekflow.scheduleNote.repository.UserRepository;
+import com.sleekflow.scheduleNote.security.CurrentUser;
 import com.sleekflow.scheduleNote.exception.CircularDependencyException;
 import com.sleekflow.scheduleNote.exception.DependenciesNotSatisfiedException;
 import com.sleekflow.scheduleNote.exception.StaleTodoException;
 import com.sleekflow.scheduleNote.exception.TodoNotFoundException;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -46,9 +50,22 @@ class TodoServiceIntegrationTest {
 	@Autowired
 	private TodoRepository repository;
 
+	@Autowired
+	private UserRepository users;
+
+	private User currentUser;
+
 	@BeforeEach
 	void clearDatabase() {
 		this.repository.deleteAllInBatch();
+		this.users.deleteAllInBatch();
+		this.currentUser = this.users.saveAndFlush(new User("owner", "Owner", "sha256$x$y"));
+		CurrentUser.set(this.currentUser);
+	}
+
+	@AfterEach
+	void clearCurrentUser() {
+		CurrentUser.clear();
 	}
 
 	private TodoResponse create(String name) {
@@ -435,6 +452,85 @@ class TodoServiceIntegrationTest {
 
 			assertThat(TodoServiceIntegrationTest.this.service.list(TodoQuery.empty(), PageRequest.of(0, 10_000))
 				.getSize()).isEqualTo(200);
+		}
+
+	}
+
+	@Nested
+	@DisplayName("ownership")
+	class Ownership {
+
+		private TodoResponse createAsOtherUser(String name) {
+			User other = TodoServiceIntegrationTest.this.users.saveAndFlush(new User("other", "Other", "sha256$x$y"));
+			CurrentUser.set(other);
+			try {
+				return create(name);
+			}
+			finally {
+				CurrentUser.set(TodoServiceIntegrationTest.this.currentUser);
+			}
+		}
+
+		@Test
+		void listOnlyReturnsTheCallersOwnTodos() {
+			create("mine");
+			createAsOtherUser("theirs");
+
+			assertThat(TodoServiceIntegrationTest.this.service.list(TodoQuery.empty(), PageRequest.of(0, 10))
+				.map(TodoResponse::name)).containsExactly("mine");
+		}
+
+		@Test
+		void gettingAnotherUsersTodoIs404() {
+			TodoResponse theirs = createAsOtherUser("theirs");
+
+			assertThatExceptionOfType(TodoNotFoundException.class)
+				.isThrownBy(() -> TodoServiceIntegrationTest.this.service.get(theirs.id()));
+		}
+
+		@Test
+		void updatingAnotherUsersTodoIs404() {
+			TodoResponse theirs = createAsOtherUser("theirs");
+
+			assertThatExceptionOfType(TodoNotFoundException.class)
+				.isThrownBy(() -> TodoServiceIntegrationTest.this.service.update(theirs.id(),
+						new UpdateTodoRequest("hijacked", null, theirs.dueDate(), TodoPriority.HIGH, null,
+								theirs.version())));
+		}
+
+		@Test
+		void deletingAnotherUsersTodoIs404() {
+			TodoResponse theirs = createAsOtherUser("theirs");
+
+			assertThatExceptionOfType(TodoNotFoundException.class)
+				.isThrownBy(() -> TodoServiceIntegrationTest.this.service.delete(theirs.id()));
+		}
+
+		@Test
+		void changingAnotherUsersTodoStatusIs404() {
+			TodoResponse theirs = createAsOtherUser("theirs");
+
+			assertThatExceptionOfType(TodoNotFoundException.class)
+				.isThrownBy(() -> TodoServiceIntegrationTest.this.service.changeStatus(theirs.id(),
+						new ChangeStatusRequest(TodoStatus.COMPLETED, theirs.version())));
+		}
+
+		@Test
+		void aTodoCannotBeMadeToDependOnAnotherUsersTodo() {
+			TodoResponse mine = create("mine");
+			TodoResponse theirs = createAsOtherUser("theirs");
+
+			assertThatExceptionOfType(TodoNotFoundException.class).isThrownBy(
+					() -> TodoServiceIntegrationTest.this.service.addDependency(mine.id(), theirs.id()));
+		}
+
+		@Test
+		void creatingATodoCannotAttachAnotherUsersDependency() {
+			TodoResponse theirs = createAsOtherUser("theirs");
+
+			assertThatExceptionOfType(TodoNotFoundException.class)
+				.isThrownBy(() -> TodoServiceIntegrationTest.this.service.create(new CreateTodoRequest("mine", null,
+						LocalDate.of(2026, 3, 10), TodoPriority.MEDIUM, null, List.of(theirs.id()))));
 		}
 
 	}

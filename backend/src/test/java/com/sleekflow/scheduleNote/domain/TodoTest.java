@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 class TodoTest {
 
 	private static Todo todo(String name) {
-		return new Todo(name, null, LocalDate.of(2026, 3, 10), TodoPriority.MEDIUM, Recurrence.none());
+		return new Todo(1L, name, null, LocalDate.of(2026, 3, 10), TodoPriority.MEDIUM, Recurrence.none());
 	}
 
 	@Test
@@ -71,7 +71,7 @@ class TodoTest {
 
 	@Test
 	void nextOccurrenceCopiesTheScheduleAndMovesTheDueDate() {
-		Todo weekly = new Todo("water plants", "the fern", LocalDate.of(2026, 3, 10), TodoPriority.LOW,
+		Todo weekly = new Todo(1L, "water plants", "the fern", LocalDate.of(2026, 3, 10), TodoPriority.LOW,
 				Recurrence.of(RecurrenceType.WEEKLY, 1));
 
 		Todo next = weekly.nextOccurrence();
@@ -81,13 +81,14 @@ class TodoTest {
 		assertThat(next.getDueDate()).isEqualTo(LocalDate.of(2026, 3, 17));
 		assertThat(next.getStatus()).isEqualTo(TodoStatus.NOT_STARTED);
 		assertThat(next.getPriority()).isEqualTo(TodoPriority.LOW);
+		assertThat(next.getUserId()).isEqualTo(weekly.getUserId());
 	}
 
 	@Test
 	void nextOccurrenceStartsWithNoDependencies() {
 		// Deliberate: this cycle's dependencies were satisfied, and there is no
 		// general way to know which of them recur too.
-		Todo weekly = new Todo("water plants", null, LocalDate.of(2026, 3, 10), TodoPriority.LOW,
+		Todo weekly = new Todo(1L, "water plants", null, LocalDate.of(2026, 3, 10), TodoPriority.LOW,
 				Recurrence.of(RecurrenceType.WEEKLY, 1));
 		weekly.addDependency(todo("fill watering can"));
 

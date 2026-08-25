@@ -28,6 +28,7 @@ import com.sleekflow.scheduleNote.exception.DependenciesNotSatisfiedException;
 import com.sleekflow.scheduleNote.exception.InvalidTodoRequestException;
 import com.sleekflow.scheduleNote.exception.StaleTodoException;
 import com.sleekflow.scheduleNote.exception.TodoNotFoundException;
+import com.sleekflow.scheduleNote.security.CurrentUser;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -54,7 +55,7 @@ public class TodoService {
 
 	@Transactional(readOnly = true)
 	public Page<TodoResponse> list(TodoQuery query, Pageable pageable) {
-		Page<Todo> page = this.repository.findAll(toSpecification(query), capped(pageable));
+		Page<Todo> page = this.repository.findAll(toSpecification(query, currentUserId()), capped(pageable));
 		Set<Long> blockedIds = blockedIdsAmong(page.getContent());
 		return page.map((todo) -> TodoResponse.of(todo, blockedIds.contains(todo.getId())));
 	}
@@ -62,20 +63,21 @@ public class TodoService {
 	/** The list's current fingerprint, for clients polling for changes. */
 	@Transactional(readOnly = true)
 	public TodoRevisionResponse revision() {
-		return this.repository.loadRevision();
+		return this.repository.loadRevision(currentUserId());
 	}
 
 	@Transactional(readOnly = true)
 	public TodoResponse get(Long id) {
-		Todo todo = this.repository.findById(id).orElseThrow(() -> new TodoNotFoundException(id));
+		Todo todo = this.repository.findByIdAndUserId(id, currentUserId())
+			.orElseThrow(() -> new TodoNotFoundException(id));
 		return TodoResponse.of(todo, todo.isBlocked());
 	}
 
 	// --- Writes -----------------------------------------------------------
 
 	public TodoResponse create(CreateTodoRequest request) {
-		Todo todo = new Todo(request.name(), request.description(), request.dueDate(), request.priority(),
-				toRecurrence(request.recurrence()));
+		Todo todo = new Todo(currentUserId(), request.name(), request.description(), request.dueDate(),
+				request.priority(), toRecurrence(request.recurrence()));
 		for (Todo dependency : loadAll(request.dependencyIdsOrEmpty())) {
 			todo.addDependency(dependency);
 		}
@@ -136,7 +138,8 @@ public class TodoService {
 	}
 
 	public TodoResponse restore(Long id) {
-		Todo todo = this.repository.findById(id).orElseThrow(() -> new TodoNotFoundException(id));
+		Todo todo = this.repository.findByIdAndUserId(id, currentUserId())
+			.orElseThrow(() -> new TodoNotFoundException(id));
 		todo.restore();
 		return respond(todo);
 	}
@@ -156,7 +159,7 @@ public class TodoService {
 
 	public TodoResponse removeDependency(Long id, Long dependsOnId) {
 		Todo todo = loadActive(id);
-		Todo dependency = this.repository.findById(dependsOnId)
+		Todo dependency = this.repository.findByIdAndUserId(dependsOnId, currentUserId())
 			.orElseThrow(() -> new TodoNotFoundException(dependsOnId));
 		todo.removeDependency(dependency);
 		return respond(todo);
@@ -178,7 +181,12 @@ public class TodoService {
 	}
 
 	private Todo loadActive(Long id) {
-		return this.repository.findByIdAndDeletedAtIsNull(id).orElseThrow(() -> new TodoNotFoundException(id));
+		return this.repository.findByIdAndDeletedAtIsNullAndUserId(id, currentUserId())
+			.orElseThrow(() -> new TodoNotFoundException(id));
+	}
+
+	private static Long currentUserId() {
+		return CurrentUser.get().getId();
 	}
 
 	private List<Todo> loadAll(Collection<Long> ids) {
@@ -186,9 +194,10 @@ public class TodoService {
 			return List.of();
 		}
 		Set<Long> wanted = new LinkedHashSet<>(ids);
+		Long userId = currentUserId();
 		Map<Long, Todo> found = this.repository.findAllById(wanted)
 			.stream()
-			.filter((todo) -> !todo.isDeleted())
+			.filter((todo) -> !todo.isDeleted() && todo.getUserId().equals(userId))
 			.collect(java.util.stream.Collectors.toMap(Todo::getId, Function.identity()));
 		List<Long> missing = wanted.stream().filter((id) -> !found.containsKey(id)).toList();
 		if (!missing.isEmpty()) {
@@ -247,8 +256,9 @@ public class TodoService {
 		return (request != null) ? request.toRecurrence() : Recurrence.none();
 	}
 
-	private static Specification<Todo> toSpecification(TodoQuery query) {
+	private static Specification<Todo> toSpecification(TodoQuery query, Long userId) {
 		List<Specification<Todo>> specifications = new ArrayList<>();
+		specifications.add(TodoSpecifications.ownedBy(userId));
 		if (query.deletedOnly()) {
 			specifications.add(TodoSpecifications.deleted());
 		}
