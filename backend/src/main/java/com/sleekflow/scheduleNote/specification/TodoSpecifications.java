@@ -18,6 +18,10 @@ public final class TodoSpecifications {
 	private TodoSpecifications() {
 	}
 
+	public static Specification<Todo> ownedBy(Long userId) {
+		return (root, query, builder) -> builder.equal(root.get("userId"), userId);
+	}
+
 	public static Specification<Todo> notDeleted() {
 		return (root, query, builder) -> builder.isNull(root.get("deletedAt"));
 	}

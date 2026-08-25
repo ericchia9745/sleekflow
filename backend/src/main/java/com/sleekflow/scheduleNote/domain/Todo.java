@@ -39,6 +39,9 @@ public class Todo {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
+	@Column(name = "user_id", nullable = false, updatable = false)
+	private Long userId;
+
 	@Column(nullable = false, length = 200)
 	private String name;
 
@@ -98,7 +101,9 @@ public class Todo {
 	protected Todo() {
 	}
 
-	public Todo(String name, String description, LocalDate dueDate, TodoPriority priority, Recurrence recurrence) {
+	public Todo(Long userId, String name, String description, LocalDate dueDate, TodoPriority priority,
+			Recurrence recurrence) {
+		this.userId = userId;
 		this.name = name;
 		this.description = description;
 		this.dueDate = dueDate;
@@ -172,7 +177,7 @@ public class Todo {
 		if (this.dueDate == null) {
 			throw new IllegalStateException("A recurring TODO needs a due date to schedule the next occurrence");
 		}
-		Todo next = new Todo(this.name, this.description, this.recurrence.nextDueDateAfter(this.dueDate),
+		Todo next = new Todo(this.userId, this.name, this.description, this.recurrence.nextDueDateAfter(this.dueDate),
 				this.priority, this.recurrence);
 		next.recurrenceSourceId = (this.recurrenceSourceId != null) ? this.recurrenceSourceId : this.id;
 		return next;
@@ -182,6 +187,10 @@ public class Todo {
 
 	public Long getId() {
 		return this.id;
+	}
+
+	public Long getUserId() {
+		return this.userId;
 	}
 
 	public String getName() {
