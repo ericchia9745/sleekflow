@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
-# Start database + backend + frontend for local development.
+# Start backend + frontend for local development (assumes MySQL is reachable).
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT/scripts/env.sh"
 
-"$ROOT/scripts/db.sh" start
+# Start the bundled MySQL only if we manage it and it is not already up.
+if [ -x "$MYSQL_HOME/bin/mysqld_safe" ]; then
+  "$ROOT/scripts/db.sh" start
+fi
 
 ( cd "$ROOT/backend"  && ./mvnw -q spring-boot:run ) &
 BACKEND_PID=$!
@@ -12,6 +15,6 @@ BACKEND_PID=$!
 FRONTEND_PID=$!
 
 trap 'kill $BACKEND_PID $FRONTEND_PID 2>/dev/null' INT TERM
-echo "backend  -> http://localhost:8080  (swagger: /swagger-ui.html)"
-echo "frontend -> http://localhost:5173"
+echo "backend  -> http://localhost:${SERVER_PORT}  (swagger: /swagger-ui.html)"
+echo "frontend -> http://localhost:${VITE_DEV_PORT:-5173}"
 wait

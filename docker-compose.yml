@@ -1,25 +1,28 @@
-# Optional: run MySQL in Docker instead of a local install.
+# Optional MySQL for reviewers who would rather not install a database locally.
 #   docker compose up -d
+# Values come from .env (or the shell) with the same defaults the app uses,
+# so the backend needs no extra configuration to talk to this container.
 services:
   mysql:
     image: mysql:9
     container_name: sleekflow-todo-mysql
     ports:
-      - "3306:3306"
+      - "${DB_PORT:-3306}:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: sleekflow_todo
-      MYSQL_USER: todo
-      MYSQL_PASSWORD: todo_dev_pw
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${DB_NAME:-sleekflow_todo}
+      MYSQL_USER: ${DB_USER:-todo}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-todo_dev_pw}
+      TEST_DB_NAME: ${TEST_DB_NAME:-sleekflow_todo_test}
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_0900_ai_ci
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-ptodo_dev_pw"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${DB_ROOT_PASSWORD:-root}"]
       interval: 5s
       timeout: 3s
       retries: 20
     volumes:
       - mysql-data:/var/lib/mysql
-      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./docker/init.sh:/docker-entrypoint-initdb.d/init.sh:ro
 
 volumes:
   mysql-data:

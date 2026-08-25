@@ -1,7 +1,12 @@
+# Tests run against a separate schema so a test run never touches dev data.
 spring:
   datasource:
-    url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:sleekflow_todo_test}?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC
+    url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${TEST_DB_NAME:sleekflow_todo_test}?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC
     username: ${DB_USER:todo}
     password: ${DB_PASSWORD:todo_dev_pw}
   flyway:
     clean-disabled: false
+
+logging:
+  level:
+    com.sleekflow.todo: ${LOG_LEVEL_APP:INFO}

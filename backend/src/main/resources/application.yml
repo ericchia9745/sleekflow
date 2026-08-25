@@ -1,42 +1,72 @@
+# All settings below are overridable from the environment. Nothing here is
+# required to be edited to run the project locally -- the defaults target the
+# local dev database. See docs/CONFIGURATION.md for the full reference.
 spring:
+  config:
+    # Optional .env file, looked up both when running from the repo root and
+    # from backend/. Absent files are ignored.
+    import:
+      - optional:file:./.env[.properties]
+      - optional:file:../.env[.properties]
+
   application:
-    name: sleekflow-todo
+    name: ${APP_NAME:sleekflow-todo}
+
   datasource:
     url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:sleekflow_todo}?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&rewriteBatchedStatements=true
     username: ${DB_USER:todo}
     password: ${DB_PASSWORD:todo_dev_pw}
     hikari:
-      maximum-pool-size: 20
       pool-name: todo-pool
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:20}
+      minimum-idle: ${DB_POOL_MIN_IDLE:5}
+      connection-timeout: ${DB_POOL_CONNECTION_TIMEOUT_MS:30000}
+
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: validate
+      ddl-auto: ${JPA_DDL_AUTO:validate}
+    show-sql: ${JPA_SHOW_SQL:false}
     properties:
       hibernate:
         jdbc:
           batch_size: 50
         order_inserts: true
         order_updates: true
+
   flyway:
-    enabled: true
+    enabled: ${FLYWAY_ENABLED:true}
     baseline-on-migrate: true
+
   jackson:
     default-property-inclusion: non_null
 
 server:
   port: ${SERVER_PORT:8080}
 
+# Application-specific settings, bound to AppProperties.
+app:
+  cors:
+    # Comma-separated. Widen this when the UI is served from another host.
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+  pagination:
+    default-page-size: ${PAGE_SIZE_DEFAULT:25}
+    max-page-size: ${PAGE_SIZE_MAX:200}
+
 springdoc:
+  api-docs:
+    enabled: ${API_DOCS_ENABLED:true}
   swagger-ui:
+    enabled: ${SWAGGER_UI_ENABLED:true}
     path: /swagger-ui.html
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: ${ACTUATOR_ENDPOINTS:health,info}
 
 logging:
   level:
-    com.sleekflow.todo: DEBUG
+    com.sleekflow.todo: ${LOG_LEVEL_APP:DEBUG}
+    org.hibernate.SQL: ${LOG_LEVEL_SQL:INFO}
